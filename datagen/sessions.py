@@ -126,7 +126,7 @@ def build_session(spec, seed):
     if not any(s["target"] for s in steps):
         raise Discard("no target step")
     steps = [{k: s[k] for k in s} for s in steps]
-    sid = hashlib.blake2b(json.dumps([shell, setup, [s["cmd"] for s in steps]]).encode(), digest_size=8).hexdigest()
+    sid = hashlib.blake2b(json.dumps([shell, setup, [(s["cmd"], s.get("nl", "")) for s in steps]]).encode(), digest_size=8).hexdigest()
     out = {"id": f"s-{sid}", "class": spec["class"], "source": "seed", "template_id": spec["template_id"], "shell": shell, "setup": setup, "steps": steps}
     if nl:
         out["nl"] = nl

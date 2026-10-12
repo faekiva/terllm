@@ -173,21 +173,26 @@ def plan(n, cap, seed):
         for src, tot in parts.items():
             if src == "seed":
                 ids = sorted(by_class[cls])
-            elif src == "tldr":
-                groups = lazy("tldr")
-                ids = sorted(groups)
-                w = [6 if i.split("-")[0] in POPULAR or i in POPULAR else 1 for i in ids]
-                k = min(len(ids), max(1, tot // 3))
-                ids = sorted(set(rng.choices(ids, weights=w, k=k * 2)))[:k]
+                qs = {t: max(1, min(cap_n, tot // max(len(ids), 1))) for t in ids}
+                extra = tot - sum(qs.values())
+                for i, t in enumerate(ids):
+                    if i < extra and qs[t] + 1 <= cap_n:
+                        qs[t] += 1
             else:
-                ids = sorted(lazy("nl2bash"))
-                ids = rng.sample(ids, min(len(ids), max(1, tot // 3)))
-            per = max(1, min(cap_n, tot // max(len(ids), 1)))
-            extra = tot - per * len(ids) if per < cap_n else 0
-            for i, tid in enumerate(ids):
-                q = per + (1 if i < extra and per + 1 <= cap_n else 0)
-                tasks.append((src, tid, q, rng.randrange(10**8)))
-            summary[f"{cls}/{src}"] = {"templates": len(ids), "quota": sum(t[2] for t in tasks if t[0] == src and (t[1] in ids))}
+                reg = lazy(src)
+                ids = sorted(reg)
+                reuse = 4 if src == "tldr" else 2      # sessions per underlying example/pair: more is just the same command again
+                w = {t: (6 if (t.split("-")[0] in POPULAR or t in POPULAR) else 1) if src == "tldr" else 1 for t in ids}
+                if sum(reuse * len(reg[t]) for t in ids) < tot * 1.0:
+                    pass
+                sw = sum(w.values())
+                qs = {t: max(1, min(cap_n, reuse * len(reg[t]), round(tot * w[t] / sw))) for t in ids}
+                if src == "nl2bash" and tot < sum(qs.values()):          # small runs: sample buckets
+                    ids = rng.sample(ids, max(1, min(len(ids), tot // 3)))
+                    qs = {t: max(1, min(cap_n, tot // len(ids))) for t in ids}
+            for t in ids:
+                tasks.append((src, t, qs[t], rng.randrange(10**8)))
+            summary[f"{cls}/{src}"] = {"templates": len(ids), "quota": sum(qs[t] for t in ids)}
     return tasks, summary
 
 
