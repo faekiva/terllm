@@ -72,8 +72,9 @@ _terllm_init() { _terllm_qbuf=$'\x01'; _terllm_last=""; _terllm_sugg="" }   # ne
 _terllm_finish() { _terllm_last=""; _terllm_sugg=""; _terllm_paint }       # accepted line: leave no ghost text in the scrollback
 
 _terllm_accept() {
-  if [[ -n $_terllm_sugg && $CURSOR -eq ${#BUFFER} ]]; then
-    BUFFER+=$_terllm_sugg; CURSOR=${#BUFFER}; _terllm_send "a"
+  local want=$_terllm_last$_terllm_sugg            # the suggestion is relative to what was typed when it arrived: typing along (cl -> cle) must not append it twice
+  if [[ -n $_terllm_sugg && $CURSOR -eq ${#BUFFER} && $want == "$BUFFER"* ]]; then
+    BUFFER=$want; CURSOR=${#BUFFER}; _terllm_send "a"
     _terllm_last=""; _terllm_sugg=""; _terllm_paint
   else
     zle ${1:-forward-char}
