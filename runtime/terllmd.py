@@ -5,7 +5,7 @@ Protocol: one tab-separated line per message.
                     q <seq> <buf>                     (the user typed `buf`)
   daemon -> shell   s <seq> <buf> <completion>        (empty completion = abstain)
 
-uv run runtime/terllmd.py [--model models/gguf/terllm-v1-q8_0.gguf] [--threshold 0.5]
+uv run runtime/terllmd.py [--model models/gguf/terllm-v1-q4_k_m.gguf] [--threshold 0.8]
 """
 import argparse
 import json
@@ -153,9 +153,9 @@ def serve(backend):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=str(ROOT / "models/gguf/terllm-v1-q8_0.gguf"))
+    ap.add_argument("--model", default=str(ROOT / "models/gguf/terllm-v1-q4_k_m.gguf"))
     ap.add_argument("--threads", type=int, default=4)
-    ap.add_argument("--threshold", type=float, default=0.5, help="abstain if the least confident token is below this probability")
+    ap.add_argument("--threshold", type=float, default=0.8, help="abstain if the least confident token is below this probability")
     a = ap.parse_args()
     b = Backend(a.model, a.threads, a.threshold)
     try:
