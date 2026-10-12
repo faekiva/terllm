@@ -20,7 +20,7 @@ import render  # noqa: E402
 def ctx(prev):
     steps = [{"cwd": "~", "ls": [], "git": None, "env": {}, "cmd": c, "exit": 0, "stderr": "", "stdout": "", "target": True} for c in prev[-6:]]
     steps.append({**steps[0], "cmd": ""} if steps else {"cwd": "~", "ls": [], "git": None, "env": {}, "cmd": "", "exit": 0, "stderr": "", "stdout": "", "target": True})
-    return render.context({"steps": steps}, len(steps) - 1)
+    return render.context({"steps": steps}, len(steps) - 1, io=False)
 
 
 def main():
@@ -52,7 +52,7 @@ def main():
             seen_h = prev
             mq = {}
             for k in range(0, len(c)):
-                body = {"prompt": base + c[:k], "n_predict": 48, "temperature": 0, "cache_prompt": True, "n_probs": 1}
+                body = {"prompt": render.prompt(base, c[:k], render.history_cands(seen_h, c[:k])), "n_predict": 48, "temperature": 0, "cache_prompt": True, "n_probs": 1}
                 r = bench.post(port, body)
                 text = r["content"].split("<|end|>")[0]
                 pr = min([x.get("prob", 2.718 ** x.get("logprob", 0)) for x in r.get("completion_probabilities", [])], default=1.0)

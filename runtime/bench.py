@@ -7,6 +7,7 @@ import argparse
 import json
 import pathlib
 import random
+import re
 import statistics as st
 import subprocess
 import sys
@@ -41,6 +42,7 @@ def main():
     ap.add_argument("--version", type=int, default=5)
     ap.add_argument("--n", type=int, default=400)
     ap.add_argument("--threads", type=int, default=4)
+    ap.add_argument("--strip", action="store_true", help="drop <|err|>/<|out|> blocks: what a plain zsh without output capture can provide")
     a = ap.parse_args()
     port = 8097
     p = subprocess.Popen([str(BIN), "-m", a.model, "--host", "127.0.0.1", "--port", str(port), "-c", "4096", "-t", str(a.threads), "-np", "1", "--no-webui"],
@@ -52,6 +54,9 @@ def main():
             except OSError:
                 time.sleep(0.1)
         ex = examples(a.version, a.n)
+        if a.strip:
+            for e in ex:
+                e["prompt"] = re.sub(r"<\|(err|out)\|>.*?(?=<\|nl\|>|<\|cmd\|>)", "", e["prompt"], flags=re.S)
         hit, cold, warm, conf_hit, conf_miss = 0, [], [], [], []
         for e in ex:
             want = e["completion"].removesuffix("<|end|>")

@@ -21,9 +21,11 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "datagen"))
+import hist_baseline  # noqa: E402
 import quality  # noqa: E402
 import render  # noqa: E402  (the training prompt format is the single source of truth)
 
+HISTORY = hist_baseline.load(os.environ.get("HISTFILE", "~/.zsh_history")) if os.path.exists(os.path.expanduser(os.environ.get("HISTFILE", "~/.zsh_history"))) else []   # shared by all shells, oldest -> newest
 SOCK = pathlib.Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "terllm.sock"
 HOME = os.path.expanduser("~")
 LLAMA_SERVER = ROOT / "vendor/llama.cpp/build/bin/llama-server"
@@ -80,7 +82,7 @@ class Session:
     def log(self, last, code):
         """Shadow record: context, what the model said for every prefix the user typed, and what was finally run (offline precision/coverage)."""
         self.steps[-1]["cmd"] = ""
-        ctx = render.context({"steps": self.steps}, len(self.steps) - 1)
+        ctx = render.context({"steps": self.steps}, len(self.steps) - 1, io=False)
         if quality.has_secret(ctx) or quality.has_secret(last):
             return
         SHADOW.parent.mkdir(parents=True, exist_ok=True)
@@ -91,6 +93,7 @@ class Session:
     def update(self, code, cwd, venv, last):
         if last:
             self.log(last, code)
+            HISTORY.append(last)
             self.steps[-1].update(cmd=last, exit=code)
             self.steps = self.steps[-16:]
         self.events, self.accepted = [], False
@@ -100,8 +103,8 @@ class Session:
 
     def prompt(self, buf):
         self.steps[-1]["cmd"] = buf
-        s = {"steps": self.steps}
-        return render.context(s, len(self.steps) - 1) + buf
+        cands = render.history_cands(HISTORY, buf)
+        return render.prompt(render.context({"steps": self.steps}, len(self.steps) - 1, io=False), buf, cands), cands
 
 
 def render_cwd(cwd):
@@ -123,10 +126,11 @@ def serve(backend):
                     seq, buf = q
                     comp = ""
                     try:
-                        text, conf = backend.complete(ses.prompt(buf))
+                        prompt, cands = ses.prompt(buf)
+                        text, conf = backend.complete(prompt)
                         text = text.split("<|end|>")[0]
                         comp = text if conf >= backend.threshold and "\n" not in text else ""
-                        ses.events.append({"typed": buf, "raw": text, "conf": round(conf, 3), "shown": bool(comp)})
+                        ses.events.append({"typed": buf, "raw": text, "conf": round(conf, 3), "shown": bool(comp), "cands": cands})
                     except Exception as e:                     # never break the shell
                         print("query failed:", e, file=sys.stderr)
                     try:

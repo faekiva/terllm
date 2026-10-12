@@ -216,6 +216,22 @@ class ShardWriter:
             self.w.close(); self.f.close(); self.w = self.f = None
 
 
+def llm_sessions(limit, per_template, seed):
+    """Pre-built (datagen/llm_sessions.py) sessions: already executed in the simulator, so only filtered and capped here."""
+    p = ROOT / "data" / "raw" / "llm" / "sessions.jsonl.zst"
+    if not limit or not p.exists():
+        return []
+    by_t, rng, out = collections.defaultdict(list), random.Random(seed), []
+    for s in render.read_shard(p):
+        if not quality.session_has_secret(s) and not any(quality.unknown_flags(st["cmd"]) for st in s["steps"]):
+            by_t[s["template_id"]].append(s)
+    for ss in by_t.values():
+        rng.shuffle(ss)
+        out += ss[:per_template]
+    rng.shuffle(out)
+    return out[:limit]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", type=int, required=True)
@@ -223,6 +239,8 @@ def main():
     ap.add_argument("--workers", type=int, default=7)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--cap", type=float, default=0.005)
+    ap.add_argument("--llm", type=int, default=0, help="extra sessions from data/raw/llm/sessions.jsonl.zst (LLM-proposed, simulator-executed)")
+    ap.add_argument("--llm-per-template", type=int, default=6)
     ap.add_argument("--per-template", type=int, default=0, help="fixed session quota for every seed template (overrides the class-share planner)")
     a = ap.parse_args()
     tasks, summary = plan(a.sessions, a.cap, a.seed, a.per_template)
@@ -246,8 +264,16 @@ def main():
                 kept[s["class"]] += 1
             if n < quota:
                 short[tid] = quota - n
+    for s_ in llm_sessions(a.llm, a.llm_per_template, a.seed):
+        hs = [render.digest(c) for c in render.canonical(s_)]
+        if not hs or any(h in gseen for h in hs):
+            continue
+        gseen.update(hs)
+        wr.write(s_)
+        kept[s_["class"]] += 1
+        kept["llm"] += 1
     wr.close()
-    print(f"{sum(kept.values())} sessions in {len(wr.paths)} shard(s); per class {dict(kept)}")
+    print(f"{sum(kept.values()) - kept['llm']} sessions in {len(wr.paths)} shard(s); per class {dict(kept)}")
     print(f"templates short of quota: {len(short)} (missing {sum(short.values())} sessions)")
     (out_dir / "plan.json").write_text(json.dumps({"plan": summary, "shards": wr.paths, "short": short}, indent=1))
 

@@ -16,7 +16,7 @@ vol = modal.Volume.from_name("terllm", create_if_missing=True)
 image = (modal.Image.debian_slim(python_version="3.12")
          .pip_install("torch==2.8.0", "transformers==4.57.3", "tokenizers", "zstandard", "numpy", "huggingface_hub"))
 BASE = "HuggingFaceTB/SmolLM2-135M"
-SPECIAL = ["<|cwd|>", "<|ls|>", "<|git|>", "<|env|>", "<|hist|>", "<|out|>", "<|err|>", "<|nl|>", "<|cmd|>", "<|end|>"]  # keep in sync with datagen/render.py
+SPECIAL = ["<|cwd|>", "<|ls|>", "<|git|>", "<|env|>", "<|hist|>", "<|out|>", "<|err|>", "<|nl|>", "<|cmd|>", "<|end|>", "<|cand|>"]  # keep in sync with datagen/render.py
 CLASSES = ["created_use", "chained", "error_fix", "state_action", "routine", "nav_noise", "t2c"]
 
 

@@ -41,11 +41,13 @@ def main():
     ap.add_argument("--version", type=int, required=True)
     ap.add_argument("--cuts", type=int, default=2)
     ap.add_argument("--p-other", type=float, default=0.25)
+    ap.add_argument("--p-io", type=float, default=0.5, help="share of examples that keep the previous command's stdout/stderr in the prompt")
     a = ap.parse_args()
     src = ROOT / "data" / "sessions" / f"v{a.version}"
     dst = ROOT / "data" / "train" / f"v{a.version}"
     dst.mkdir(parents=True, exist_ok=True)
     tok = render.tokenizer()
+    bank = render.Bank(st["cmd"] for sh in sorted(src.glob("shard-*.jsonl.zst")) for s in render.read_shard(sh) for st in s["steps"] if st["exit"] == 0)
     outs = {"train": Out(dst, "train"), "val": Out(dst, "val")}
     stat = {sp: {"examples": 0, "tokens": 0, "completion_tokens": 0} for sp in outs}
     by_class = {}
@@ -67,12 +69,12 @@ def main():
         for s in render.read_shard(sh):
             sp = gates.split_of(s["template_id"], s["class"])
             rng = random.Random(s["id"])
-            buf[sp].extend(render.render_session(s, rng, cuts=a.cuts, p_other=a.p_other))
+            buf[sp].extend(render.render_session(s, rng, cuts=a.cuts, p_other=a.p_other, bank=bank, p_io=a.p_io))
             if len(buf[sp]) >= 20000:
                 flush(sp)
     for sp in outs:
         flush(sp); outs[sp].close()
-    rep = {"version": a.version, "cuts": a.cuts, "p_other": a.p_other, **{sp: stat[sp] for sp in stat},
+    rep = {"version": a.version, "cuts": a.cuts, "p_other": a.p_other, "p_io": a.p_io, **{sp: stat[sp] for sp in stat},
            "total_tokens": sum(stat[s]["tokens"] for s in stat), "total_examples": sum(stat[s]["examples"] for s in stat),
            "per_class": {c: {"examples": v[0], "tokens": v[1]} for c, v in by_class.items()}, "files": {sp: outs[sp].files for sp in outs}}
     (dst / "export.json").write_text(json.dumps(rep, indent=1))
