@@ -5,9 +5,10 @@ Protocol: one tab-separated line per message.
                     q <seq> <buf>                     (the user typed `buf`)
   daemon -> shell   s <seq> <buf> <completion>        (empty completion = abstain)
 
-uv run runtime/terllmd.py [--model models/gguf/terllm-v2-q4_k_m.gguf] [--threshold 0.8]
+uv run runtime/terllmd.py [--model models/gguf/terllm-v3-q4_k_m.gguf] [--threshold 0.8] [--no-fs]   (--no-fs: no file/dir/command candidates in the prompt; required for v1/v2 models)
 """
 import argparse
+import itertools
 import json
 import os
 import pathlib
@@ -30,6 +31,7 @@ HISTORY = hist_baseline.load(os.environ.get("HISTFILE", "~/.zsh_history")) if os
 SOCK = pathlib.Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "terllm.sock"
 HOME = os.path.expanduser("~")
 LLAMA_SERVER = ROOT / "vendor/llama.cpp/build/bin/llama-server"
+FS = False
 SHADOW = pathlib.Path(os.environ.get("XDG_DATA_HOME", HOME + "/.local/share")) / "terllm/shadow.jsonl"   # local only, never uploaded
 
 
@@ -39,6 +41,31 @@ def listing(cwd):
     except OSError:
         return []
     return sorted(names, key=lambda s: (s.lower().lstrip("."), s))[:40]   # same order as the simulator's ls -A
+
+
+def listdir(key):
+    """render.fs_cands' view of a directory (display path, ~ allowed): [name | name/ | name*] like datagen/sim/shell.py fs_for. None if unreadable."""
+    try:
+        with os.scandir(os.path.expanduser(key)) as it:
+            es = list(itertools.islice(it, 3000))
+    except OSError:
+        return None
+    out = [(e.name, "/" if e.is_dir() else "*" if os.access(e.path, os.X_OK) and e.is_file() else "") for e in es]
+    return [n + k for n, k in sorted(out, key=lambda x: (x[0].lower().lstrip("."), x[0]))]
+
+
+def path_bins(dirs):
+    """Names of the executables on PATH (or in the given dirs), sorted."""
+    names = set()
+    for d in dirs:
+        try:
+            names.update(e.name for e in os.scandir(d) if e.is_file() and os.access(e.path, os.X_OK))
+        except OSError:
+            pass
+    return sorted(names)
+
+
+BINS = path_bins(os.environ.get("PATH", "").split(":"))
 
 
 def git_state(cwd):
@@ -104,7 +131,8 @@ class Session:
     def prompt(self, buf):
         self.steps[-1]["cmd"] = buf
         cands = render.history_cands(HISTORY, buf)
-        return render.prompt(render.context({"steps": self.steps}, len(self.steps) - 1, io=False), buf, cands), cands
+        fs = render.fs_cands(buf, self.steps[-1]["cwd"], listdir, sorted(set(BINS) | set(path_bins([self.venv + "/bin"] if self.venv else [])))) if FS else []
+        return render.prompt(render.context({"steps": self.steps}, len(self.steps) - 1, io=False), buf, cands, fs), cands, fs
 
 
 def render_cwd(cwd):
@@ -126,11 +154,11 @@ def serve(backend):
                     seq, buf = q
                     comp = ""
                     try:
-                        prompt, cands = ses.prompt(buf)
+                        prompt, cands, fs = ses.prompt(buf)
                         toks = backend.complete(prompt)
                         comp = policy.confident_prefix(toks, backend.threshold)
                         comp = "" if "\n" in comp else comp
-                        ses.events.append({"typed": buf, "toks": [[t, round(p, 3)] for t, p in toks], "shown": comp, "cands": cands})
+                        ses.events.append({"typed": buf, "toks": [[t, round(p, 3)] for t, p in toks], "shown": comp, "cands": cands, "fs": fs})
                     except Exception as e:                     # never break the shell
                         print("query failed:", e, file=sys.stderr)
                     try:
@@ -157,10 +185,12 @@ def serve(backend):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=str(ROOT / "models/gguf/terllm-v2-q4_k_m.gguf"))
+    ap.add_argument("--model", default=str(ROOT / "models/gguf/terllm-v3-q4_k_m.gguf"))
     ap.add_argument("--threads", type=int, default=4)
     ap.add_argument("--threshold", type=float, default=0.8, help="show the longest prefix of the completion whose tokens all have at least this probability")
+    ap.add_argument("--no-fs", action="store_true", help="leave file/dir/command candidates out of the prompt (v1/v2 models were not trained with <|fs|>)")
     a = ap.parse_args()
+    FS = not a.no_fs
     b = Backend(a.model, a.threads, a.threshold)
     try:
         serve(b)

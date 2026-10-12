@@ -43,6 +43,7 @@ def main():
     ap.add_argument("--n", type=int, default=400)
     ap.add_argument("--threads", type=int, default=4)
     ap.add_argument("--strip", action="store_true", help="drop <|err|>/<|out|> blocks: what a plain zsh without output capture can provide")
+    ap.add_argument("--nofs", action="store_true", help="drop the <|fs|> block (what a model without it, e.g. v2, can be fed)")
     a = ap.parse_args()
     port = 8097
     p = subprocess.Popen([str(BIN), "-m", a.model, "--host", "127.0.0.1", "--port", str(port), "-c", "4096", "-t", str(a.threads), "-np", "1", "--no-webui"],
@@ -57,6 +58,9 @@ def main():
         if a.strip:
             for e in ex:
                 e["prompt"] = re.sub(r"<\|(err|out)\|>.*?(?=<\|nl\|>|<\|cmd\|>)", "", e["prompt"], flags=re.S)
+        if a.nofs:
+            for e in ex:
+                e["prompt"] = re.sub(r"<\|fs\|>.*?(?=<\|cmd\|>)", "", e["prompt"], flags=re.S)
         hit, cold, warm, conf_hit, conf_miss = 0, [], [], [], []
         for e in ex:
             want = e["completion"].removesuffix("<|end|>")

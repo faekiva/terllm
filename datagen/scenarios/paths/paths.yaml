@@ -1,0 +1,121 @@
+# Path/file/command arguments: the model sees what tab completion offers (<|fs|>) and has to decide whether to copy a candidate,
+# write a new name, or stop. Targets that exist are copy cases; created names are no-copy cases; bare commands are no-args cases.
+- id: paths.cd_deep
+  class: paths
+  vars: {a: {gen: project}, b: {gen: word}, c: {gen: word}, d: {gen: word}}
+  setup: ["mkdir -p {a}/{b}/{c}", "mkdir -p {a}/{b}/{d}", "mkdir -p {a}/docs", "touch {a}/README.md"]
+  steps: [{cmd: "cd {a}/{b}/{c}", target: true}, {cmd: "ls", target: true}]
+  variants:
+    stepwise: {steps: [{cmd: "cd {a}", target: true}, {cmd: "cd {b}", target: true}, {cmd: "cd {d}", target: true}, {cmd: "pwd", target: true}]}
+    back: {steps: [{cmd: "cd {a}/{b}/{c}", target: true}, {cmd: "cd ../{d}", target: true}, {cmd: "cd ../../docs", target: true}]}
+    ls_first: {steps: [{cmd: "ls {a}", target: true}, {cmd: "ls {a}/{b}", target: true}, {cmd: "cd {a}/{b}/{d}", target: true}]}
+- id: paths.read
+  class: paths
+  vars: {a: {gen: word}, f: {gen: file_txt}, g: {gen: file_md}, h: {gen: file_py}, m: {gen: msg}}
+  foreach: {rd: ["cat", "less", "head -n 3", "tail -n 5", "wc -l"]}
+  setup: ["mkdir -p {a}/notes {a}/src", "echo \"{m}\" > {a}/notes/{f}", "echo \"# hi\" > {a}/notes/{g}", "echo \"print(1)\" > {a}/src/{h}"]
+  steps: [{cmd: "{rd} {a}/notes/{f}", target: true}, {cmd: "{rd} {a}/src/{h}", target: true}]
+  variants:
+    flat: {setup: ["echo \"{m}\" > {f}", "echo \"# hi\" > {g}", "echo \"print(1)\" > {h}"], steps: [{cmd: "{rd} {f}", target: true}, {cmd: "{rd} {g}", target: true}, {cmd: "{rd} {h}", target: true}]}
+- id: paths.run_py
+  class: paths
+  vars: {a: {gen: word}, h: {gen: file_py}, k: {gen: file_py}}
+  setup: ["mkdir -p {a}/scripts", "echo \"print(1)\" > {a}/scripts/{h}", "echo \"print(2)\" > {k}"]
+  steps: [{cmd: "python3 {a}/scripts/{h}", target: true}, {cmd: "python3 {k}", target: true}]
+  variants:
+    ls_then: {steps: [{cmd: "ls {a}/scripts", target: true}, {cmd: "python3 {a}/scripts/{h}", target: true}]}
+- id: paths.edit
+  class: paths
+  vars: {a: {gen: word}, h: {gen: file_py}, g: {gen: file_md}}
+  setup: ["sudo apt install -y vim", "mkdir -p {a}/src", "echo \"print(1)\" > {a}/src/{h}", "echo \"# t\" > {g}"]
+  steps: [{cmd: "vim {a}/src/{h}", target: true}, {cmd: "vim {g}", target: true}]
+  variants:
+    cat_vim: {steps: [{cmd: "ls {a}/src", target: true}, {cmd: "vim {a}/src/{h}", target: true}, {cmd: "cat {a}/src/{h}", target: true}]}
+- id: paths.exec
+  class: paths
+  vars: {s: {gen: file_sh}, a: {gen: word}, t: {gen: file_sh}}
+  setup: ["mkdir -p {a}", "echo \"echo ok\" > {s}", "chmod +x {s}", "echo \"echo hi\" > {a}/{t}", "chmod +x {a}/{t}", "echo \"echo no\" > notes.sh"]
+  steps: [{cmd: "./{s}", target: true}, {cmd: "./{a}/{t}", target: true}]
+  variants:
+    interp: {steps: [{cmd: "bash {s}", target: true}, {cmd: "sh {a}/{t}", target: true}]}
+    chmod_first: {steps: [{cmd: "chmod +x notes.sh", target: true}, {cmd: "./notes.sh", target: true}]}
+    denied: {steps: [{cmd: "./notes.sh", expect: fail}, {cmd: "chmod +x notes.sh", target: true}, {cmd: "./notes.sh", target: true}]}
+- id: paths.copy_move
+  class: paths
+  vars: {a: {gen: word}, b: {gen: project}, f: {gen: file_txt}, g: {gen: file_md}}
+  setup: ["mkdir {a}", "mkdir {b}", "echo x > {f}", "echo y > {g}"]
+  steps: [{cmd: "cp {f} {a}/", target: true}, {cmd: "mv {g} {b}/", target: true}, {cmd: "ls {a}", target: true}]
+  variants:
+    rename: {vars: {n: {gen: file_txt}}, steps: [{cmd: "mv {f} {n}", target: true}, {cmd: "cp {g} {b}/{n}", target: true}]}
+    dir: {vars: {a2: {add: [a, "-backup"]}}, steps: [{cmd: "cp -r {a} {a2}", target: true}, {cmd: "ls {a2}", target: true}]}
+    rm: {steps: [{cmd: "rm {f}", target: true}, {cmd: "rm -r {a}", target: true}]}
+- id: paths.new_names
+  class: paths
+  vars: {n: {gen: project}, f: {gen: file_py}, k: {gen: word}, o: {gen: file_txt}}
+  setup: ["mkdir -p {k}", "echo x > {o}"]
+  steps: [{cmd: "mkdir {n}", target: true}, {cmd: "cd {n}", target: true}, {cmd: "touch {f}", target: true}]
+  variants:
+    redirect: {steps: [{cmd: "echo hello > {f}", target: true}, {cmd: "cat {f}", target: true}]}
+    touch_many: {vars: {g: {gen: file_md}}, steps: [{cmd: "touch {f} {g}", target: true}, {cmd: "ls", target: true}]}
+    mkdir_p: {steps: [{cmd: "mkdir -p {n}/{k}/src", target: true}, {cmd: "cd {n}/{k}/src", target: true}]}
+    copy_as: {steps: [{cmd: "cp {o} {f}.bak", target: true}, {cmd: "ls", target: true}]}
+- id: paths.git_files
+  class: paths
+  vars: {d: {gen: project}, f: {gen: file_py}, g: {gen: file_md}, br: {gen: branch}, m: {gen: msg}}
+  setup: ["fx_project {d} python git", "cd {d}"]
+  steps: [{cmd: "touch {f}", target: true}, {cmd: "git add {f}", target: true}, {cmd: "git commit -m \"{m}\"", target: true}]
+  variants:
+    branch: {steps: [{cmd: "git switch -c {br}", target: true}, {cmd: "touch {f}", target: true}, {cmd: "git add .", target: true}]}
+    checkout_b: {steps: [{cmd: "git checkout -b {br}", target: true}, {cmd: "git status", target: true}]}
+    two: {steps: [{cmd: "touch {f} {g}", target: true}, {cmd: "git add {f} {g}", target: true}, {cmd: "git status", target: true}]}
+    mv: {steps: [{cmd: "git mv README.md {g}", target: true}, {cmd: "git status", target: true}]}
+    diff_file: {steps: [{cmd: "echo x >> README.md", target: true}, {cmd: "git diff README.md", target: true}, {cmd: "git add README.md", target: true}]}
+- id: paths.bare
+  class: paths
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python git", "cd {d}"]
+  steps: [{cmd: "ls", target: true}, {cmd: "git status", target: true}, {cmd: "pwd", target: true}, {cmd: "git log --oneline", target: true}]
+  variants:
+    node: {setup: ["fx_project {d} node git", "cd {d}"], steps: [{cmd: "git status", target: true}, {cmd: "ls -la", target: true}, {cmd: "git diff", target: true}, {cmd: "clear", target: true}]}
+    home: {setup: ["mkdir -p {d}", "cd ~"], steps: [{cmd: "ls", target: true}, {cmd: "pwd", target: true}, {cmd: "cd", target: true}, {cmd: "clear", target: true}]}
+- id: paths.home_abs
+  class: paths
+  vars: {a: {gen: project}, b: {gen: word}, f: {gen: file_txt}, r: {gen: file_csv}, p: {gen: project}}
+  setup: ["mkdir -p ~/projects/{a}/{b}", "echo x > ~/projects/{a}/{f}", "mkdir -p ~/Downloads", "touch ~/Downloads/{r}", "mkdir -p ~/projects/{p}", "cd ~"]
+  steps: [{cmd: "cd ~/projects/{a}", target: true}, {cmd: "cat {f}", target: true}, {cmd: "cd ~/projects/{p}", target: true}]
+  variants:
+    cat_abs: {steps: [{cmd: "cat ~/projects/{a}/{f}", target: true}, {cmd: "ls ~/Downloads", target: true}]}
+    downloads: {steps: [{cmd: "ls ~/Downloads", target: true}, {cmd: "cp ~/Downloads/{r} ~/projects/{a}/", target: true}, {cmd: "rm ~/Downloads/{r}", target: true}]}
+    mv_here: {steps: [{cmd: "cd ~/projects/{a}/{b}", target: true}, {cmd: "mv ~/Downloads/{r} .", target: true}, {cmd: "ls", target: true}]}
+    etc: {steps: [{cmd: "ls /etc", target: true}, {cmd: "cat /etc/hosts", target: true}, {cmd: "ls /usr/local", target: true}]}
+    sibling: {steps: [{cmd: "cd ~/projects/{a}/{b}", target: true}, {cmd: "cd ../../{p}", target: true}, {cmd: "ls ~/projects", target: true}]}
+- id: paths.venv
+  class: paths
+  vars: {d: {gen: project}, p: {gen: pip}}
+  setup: ["fx_project {d} python git", "cd {d}", "python3 -m venv .venv"]
+  steps: [{cmd: "source .venv/bin/activate", target: true}, {cmd: "pip install {p}", target: true}, {cmd: "ls", target: true}]
+  variants:
+    direct: {steps: [{cmd: ".venv/bin/pip install {p}", target: true}, {cmd: "ls .venv/bin", target: true}]}
+- id: paths.dotfiles
+  class: paths
+  vars: {d: {gen: project}, k: {gen: word}}
+  setup: ["fx_project {d} python git", "cd {d}", "echo \"{k}=1\" > .env.example"]
+  steps: [{cmd: "cp .env.example .env", target: true}, {cmd: "cat .env", target: true}, {cmd: "cat .gitignore", target: true}]
+  variants:
+    ls_a: {steps: [{cmd: "ls -a", target: true}, {cmd: "cat .env.example", target: true}]}
+- id: paths.archive
+  class: paths
+  vars: {a: {gen: project}, f: {gen: file_txt}}
+  setup: ["mkdir {a}", "echo x > {a}/{f}"]
+  steps: [{cmd: "tar czf {a}.tgz {a}", target: true}, {cmd: "ls", target: true}, {cmd: "tar tzf {a}.tgz", target: true}]
+  variants:
+    extract: {steps: [{cmd: "tar czf {a}.tgz {a}", target: true}, {cmd: "rm -r {a}", target: true}, {cmd: "tar xzf {a}.tgz", target: true}, {cmd: "ls {a}", target: true}]}
+    rm_archive: {steps: [{cmd: "tar czf {a}.tgz {a}", target: true}, {cmd: "rm {a}.tgz", target: true}]}
+- id: paths.siblings
+  class: paths
+  vars: {a: {gen: project}, a2: {add: [a, "-old"]}, a3: {add: [a, "-new"]}, f: {gen: file_txt}}
+  setup: ["mkdir {a}", "mkdir {a2}", "mkdir {a3}", "echo x > {a3}/{f}"]
+  steps: [{cmd: "ls {a3}", target: true}, {cmd: "cd {a3}", target: true}, {cmd: "cat {f}", target: true}]
+  variants:
+    made: {setup: ["mkdir {a}", "mkdir {a2}"], steps: [{cmd: "mkdir {a3}", target: true}, {cmd: "cd {a3}", target: true}, {cmd: "cd ..", target: true}, {cmd: "ls {a3}", target: true}]}
+    logs: {setup: ["mkdir logs", "echo a > logs/app-2025-09.log", "echo b > logs/app-2025-10.log", "echo c > logs/worker-2025-10.log"], steps: [{cmd: "ls logs", target: true}, {cmd: "cat logs/app-2025-10.log", target: true}, {cmd: "tail -n 5 logs/worker-2025-10.log", target: true}]}

@@ -1,0 +1,304 @@
+{
+ "version": 7,
+ "generator_commit": "02a4d98cf2c2b4fc58a74e7df69f3b99fccd6095",
+ "sessions": 196872,
+ "shards": [
+  "shard-00000.jsonl.zst"
+ ],
+ "per_class": {
+  "created_use": {
+   "sessions": 13385,
+   "share": 0.068,
+   "target_steps": 16095,
+   "templates": 48
+  },
+  "chained": {
+   "sessions": 11198,
+   "share": 0.0569,
+   "target_steps": 34958,
+   "templates": 774
+  },
+  "error_fix": {
+   "sessions": 67451,
+   "share": 0.3426,
+   "target_steps": 103483,
+   "templates": 1083
+  },
+  "state_action": {
+   "sessions": 17349,
+   "share": 0.0881,
+   "target_steps": 19404,
+   "templates": 331
+  },
+  "routine": {
+   "sessions": 20043,
+   "share": 0.1018,
+   "target_steps": 43712,
+   "templates": 630
+  },
+  "nav_noise": {
+   "sessions": 7955,
+   "share": 0.0404,
+   "target_steps": 18731,
+   "templates": 27
+  },
+  "t2c": {
+   "sessions": 43995,
+   "share": 0.2235,
+   "target_steps": 43995,
+   "templates": 7638
+  },
+  "paths": {
+   "sessions": 15496,
+   "share": 0.0787,
+   "target_steps": 40488,
+   "templates": 56
+  }
+ },
+ "per_source": {
+  "seed": 164276,
+  "tldr": 20997,
+  "nl2bash": 7442,
+  "llm": 4157
+ },
+ "templates": 10587,
+ "top_templates": [
+  [
+   "created_use.clone_cd/gitlab",
+   300,
+   0.0015
+  ],
+  [
+   "created_use.clone_cd",
+   300,
+   0.0015
+  ],
+  [
+   "created_use.cargo_new",
+   300,
+   0.0015
+  ],
+  [
+   "created_use.clone_cd/ls",
+   300,
+   0.0015
+  ],
+  [
+   "created_use.clone_cd/named",
+   300,
+   0.0015
+  ]
+ ],
+ "target_commands": {
+  "total": 320866,
+  "unique": 98330,
+  "unique_ratio": 0.3065,
+  "distinct_1gram": {
+   "distinct": 76152,
+   "total": 938898,
+   "ratio": 0.0811
+  },
+  "distinct_2gram": {
+   "distinct": 136222,
+   "total": 618032,
+   "ratio": 0.2204
+  },
+  "distinct_3gram": {
+   "distinct": 90498,
+   "total": 324439,
+   "ratio": 0.2789
+  }
+ },
+ "top30_programs": [
+  [
+   "git",
+   36781,
+   0.1146
+  ],
+  [
+   "apt",
+   29547,
+   0.0921
+  ],
+  [
+   "pip",
+   28848,
+   0.0899
+  ],
+  [
+   "ls",
+   21536,
+   0.0671
+  ],
+  [
+   "cd",
+   20942,
+   0.0653
+  ],
+  [
+   "python",
+   11163,
+   0.0348
+  ],
+  [
+   "npm",
+   10784,
+   0.0336
+  ],
+  [
+   "echo",
+   10288,
+   0.0321
+  ],
+  [
+   "cat",
+   9900,
+   0.0309
+  ],
+  [
+   "docker",
+   8210,
+   0.0256
+  ],
+  [
+   "cargo",
+   6346,
+   0.0198
+  ],
+  [
+   "make",
+   5907,
+   0.0184
+  ],
+  [
+   "rm",
+   5492,
+   0.0171
+  ],
+  [
+   "tar",
+   5413,
+   0.0169
+  ],
+  [
+   "cmake",
+   4791,
+   0.0149
+  ],
+  [
+   "cp",
+   4515,
+   0.0141
+  ],
+  [
+   "mkdir",
+   4390,
+   0.0137
+  ],
+  [
+   "kubectl",
+   4381,
+   0.0137
+  ],
+  [
+   "systemctl",
+   4351,
+   0.0136
+  ],
+  [
+   "find",
+   4264,
+   0.0133
+  ],
+  [
+   "mv",
+   4138,
+   0.0129
+  ],
+  [
+   "touch",
+   4068,
+   0.0127
+  ],
+  [
+   "source",
+   3705,
+   0.0115
+  ],
+  [
+   "python3",
+   3688,
+   0.0115
+  ],
+  [
+   "wc",
+   2799,
+   0.0087
+  ],
+  [
+   "less",
+   2630,
+   0.0082
+  ],
+  [
+   "chmod",
+   2603,
+   0.0081
+  ],
+  [
+   "main",
+   2508,
+   0.0078
+  ],
+  [
+   "tail",
+   2495,
+   0.0078
+  ],
+  [
+   "head",
+   2285,
+   0.0071
+  ]
+ ],
+ "distinct_programs": 5719,
+ "unverified_steps_share": 0.1364,
+ "flags": {
+  "checked_targets": 168570,
+  "with_unknown_flag": 0,
+  "rate": 0.0,
+  "top_unknown": []
+ },
+ "bash_n_failures": [],
+ "secret_sessions": 0,
+ "exact_dup_sessions": 0,
+ "split": {
+  "train_sessions": 187674,
+  "val_sessions": 9198,
+  "train_templates": 10070,
+  "val_templates": 517
+ },
+ "tokens": {
+  "sample": 4000,
+  "avg_tokens_per_example": 50.3,
+  "max_in_sample": 133,
+  "examples_rendered": 877372,
+  "estimated_total_tokens": 44145191
+ },
+ "simulator_agreement": {
+  "step": 1.0,
+  "session": 1.0,
+  "sessions_replayed": 800,
+  "opaque_steps_excluded": 343
+ },
+ "gates": {
+  "no_duplicate_ids": true,
+  "no_exact_duplicates": true,
+  "template_cap<=0.5%": true,
+  "program_cap<=15%": true,
+  "no_secrets": true,
+  "bash_n_clean": null,
+  "val_split_by_template": true
+ },
+ "gates_passed": true
+}

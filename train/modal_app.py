@@ -4,6 +4,7 @@
   uv run modal run train/modal_app.py::prep --version 4           # tokenize on CPU -> volume
   uv run modal run train/modal_app.py::fit --version 4 --max-steps 60 --run smoke   # throughput/loss smoke test
   uv run modal run --detach train/modal_app.py::fit --version 4 --run v4            # the real run
+  uv run modal run --detach train/modal_app.py::fit --version 7 --run v3 --init v2 --lr 1e-4 --warmup 100   # continue a trained run on a new corpus
   uv run modal volume get terllm /out/v4 models/                  # download the checkpoint
 
 Loss is on the completion only; the prompt is tokenized separately from the completion so the boundary matches inference
@@ -16,8 +17,8 @@ vol = modal.Volume.from_name("terllm", create_if_missing=True)
 image = (modal.Image.debian_slim(python_version="3.12")
          .pip_install("torch==2.8.0", "transformers==4.57.3", "tokenizers", "zstandard", "numpy", "huggingface_hub"))
 BASE = "HuggingFaceTB/SmolLM2-135M"
-SPECIAL = ["<|cwd|>", "<|ls|>", "<|git|>", "<|env|>", "<|hist|>", "<|out|>", "<|err|>", "<|nl|>", "<|cmd|>", "<|end|>", "<|cand|>"]  # keep in sync with datagen/render.py
-CLASSES = ["created_use", "chained", "error_fix", "state_action", "routine", "nav_noise", "t2c"]
+SPECIAL = ["<|cwd|>", "<|ls|>", "<|git|>", "<|env|>", "<|hist|>", "<|out|>", "<|err|>", "<|nl|>", "<|cmd|>", "<|end|>", "<|cand|>", "<|fs|>"]  # keep in sync with datagen/render.py
+CLASSES = ["created_use", "chained", "error_fix", "state_action", "routine", "nav_noise", "t2c", "paths"]
 
 
 def get_tokenizer():
@@ -142,7 +143,7 @@ def history_baseline(prompt):
 
 @app.function(image=image, gpu="A100-40GB", volumes={"/data": vol}, timeout=3 * 3600, memory=32768)
 def fit(version: int = 4, run: str = "v4", lr: float = 3e-4, batch: int = 1024, micro: int = 256, epochs: float = 1.0, max_steps: int = 0,
-        max_minutes: int = 150, eval_every: int = 100, em_every: int = 300, warmup: int = 200, subset: int = 0):
+        max_minutes: int = 150, eval_every: int = 100, em_every: int = 300, warmup: int = 200, subset: int = 0, init: str = ""):
     import json
     import math
     import time
@@ -159,8 +160,12 @@ def fit(version: int = 4, run: str = "v4", lr: float = 3e-4, batch: int = 1024, 
     ttok = get_tokenizer()
     assert all(htok.convert_tokens_to_ids(s) == ttok.token_to_id(s) for s in SPECIAL), "tokenizer id mismatch"
     end_id, pad_id = ttok.token_to_id("<|end|>"), htok.eos_token_id
-    model = AutoModelForCausalLM.from_pretrained(BASE, dtype=torch.float32, attn_implementation="sdpa")
+    model = AutoModelForCausalLM.from_pretrained(f"/data/out/{init}" if init else BASE, dtype=torch.float32, attn_implementation="sdpa")   # init=v2: continue from a trained run
     model.resize_token_embeddings(len(htok), pad_to_multiple_of=64)
+    if init:                                                   # <|fs|> starts at the mean of the other special-token rows (v2 never saw it)
+        with torch.no_grad():
+            emb, new = model.get_input_embeddings().weight, ttok.token_to_id("<|fs|>")
+            emb[new] = emb[[ttok.token_to_id(t) for t in SPECIAL if t != "<|fs|>"]].mean(0)
     model.to(dev).train()
     N = len(tr.lens) if not subset else min(subset, len(tr.lens))
     rng = np.random.default_rng(0)

@@ -112,7 +112,7 @@ def context_session(r, setup_files, setup_dirs, final_cmd, nl, tid, source, meta
     steps = []
     for _ in range(r.randint(0, 2)):
         steps.append(run_step(sim, pick(r, ["ls", "ls -la", "pwd", "ls -a"]), False, "any"))
-    pre = sim.snapshot()
+    pre = {**sim.snapshot(), "fs": sim.fs_for(final_cmd)}
     steps.append({**pre, "cmd": final_cmd, "exit": 0, "stderr": "", "stdout": "", "target": True, "v": False, "nl": nl})
     sid = hashlib.blake2b(repr((setup, [x["cmd"] for x in steps], final_cmd, nl, sim.shell)).encode(), digest_size=8).hexdigest()
     return {"id": f"s-{sid}", "class": "t2c", "source": source, "template_id": tid, "shell": sim.shell, "setup": setup, "steps": steps, "nl": nl,

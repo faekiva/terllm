@@ -20,7 +20,7 @@ import sessions as S
 import t2c
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-CLASS_SHARE = {"created_use": 0.14, "chained": 0.13, "error_fix": 0.22, "state_action": 0.15, "routine": 0.13, "nav_noise": 0.07, "t2c": 0.16}
+CLASS_SHARE = {"created_use": 0.14, "chained": 0.13, "error_fix": 0.22, "state_action": 0.15, "routine": 0.13, "nav_noise": 0.07, "t2c": 0.16, "paths": 0.15}   # v6 + paths (shares are quotas of --sessions, not normalised)
 T2C_SPLIT = {"seed": 0.35, "tldr": 0.40, "nl2bash": 0.25}
 POPULAR = set("""git git-commit git-push git-pull git-checkout git-branch git-log git-diff git-stash git-merge git-rebase git-clone git-add git-status git-reset
 ls cd cp mv rm mkdir touch cat head tail less find grep tar zip unzip curl wget ssh scp rsync docker docker-compose kubectl npm pip python node cargo make cmake gcc

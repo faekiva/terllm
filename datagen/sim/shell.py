@@ -11,6 +11,7 @@ from .fs import FS, HOME, Node
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
 import fixtures as FX  # noqa: E402
+from render import NOCOMP as NOFS  # noqa: E402  (words a completer never touches)
 
 PRESENT = set("""cd ls pwd mkdir touch rm rmdir mv cp cat echo printf head tail wc grep find chmod ln export unset source . deactivate
 clear history true false sleep which type tar unzip zip gzip gunzip wget curl git python python3 pip pip3 node npm npx make cmake gcc g++ cc cargo
@@ -222,6 +223,29 @@ class Sim:
             git = {"branch": repo.head, "dirty": G.short_status(self, root, repo)[:12], "upstream": repo.upstream.get(repo.head)}
         env = {"VIRTUAL_ENV": posixpath.basename(self.venv)} if self.venv else {}
         return {"cwd": self.display_cwd(), "ls": names[:40], "git": git, "env": env}
+
+    def fs_for(self, cmd):
+        """Listings a path completer consults while `cmd` is typed: cwd + every ancestor dir of every path-like word.
+        {display dir: [name | name/ (dir) | name* (executable file)]}; render.fs_cands turns them into candidates."""
+        dirs = [self.cwd]
+        for w in cmd.split():
+            if w.startswith("-") or "/" not in w or set(w) & NOFS:
+                continue
+            acc = "/" if w.startswith("/") else ""
+            if acc:
+                dirs.append("/")
+            for part in [p for p in w.rpartition("/")[0].split("/") if p]:
+                acc = part if not acc else acc + ("" if acc == "/" else "/") + part
+                dirs.append(self.abs(acc))
+        out = {}
+        for d in dirs:
+            n = self.fs.lookup(d)
+            if n is None or n.kind != "d":
+                continue
+            key = "~" + d[len(HOME):] if d == HOME or d.startswith(HOME + "/") else d
+            out[key] = [k + ("/" if c.kind == "d" else "*" if c.mode & 0o111 else "") for k, c in sorted(n.children.items(), key=lambda kv: (kv[0].lower().lstrip("."), kv[0]))
+                        if not set(k) & NOFS][:300]
+        return out
 
     def has_cmd(self, c):
         if c in self.fake:

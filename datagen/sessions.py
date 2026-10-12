@@ -14,7 +14,7 @@ from wordlists import base_dir, draw, pick
 
 ROOT = pathlib.Path(__file__).resolve().parent
 SCEN = ROOT / "scenarios"
-CLASSES = ["created_use", "chained", "error_fix", "state_action", "routine", "nav_noise", "t2c"]
+CLASSES = ["created_use", "chained", "error_fix", "state_action", "routine", "nav_noise", "t2c", "paths"]
 MAX_OUT, MAX_ERR = 1000, 1500
 
 
@@ -78,7 +78,7 @@ def noise_pool(sim):
 
 
 def run_step(sim, cmd, target, expect=None):
-    pre = sim.snapshot()
+    pre = {**sim.snapshot(), "fs": sim.fs_for(cmd)}
     try:
         res = sim.run(cmd)
     except Unsupported as e:

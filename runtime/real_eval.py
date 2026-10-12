@@ -16,6 +16,7 @@ import hist_baseline  # noqa: E402
 
 sys.path.insert(0, str(bench.ROOT / "datagen"))
 import render  # noqa: E402
+import terllmd  # noqa: E402
 
 
 def ctx(prev):
@@ -30,6 +31,7 @@ def main():
     ap.add_argument("--hist", default="~/.zsh_history")
     ap.add_argument("--n", type=int, default=300)
     ap.add_argument("--thresholds", default="0.5,0.8,0.95")
+    ap.add_argument("--fs", action="store_true", help="add <|fs|> candidates computed from the real ~ and PATH (v3+ models); cwd is unknown in a history file, so relative paths resolve against ~")
     a = ap.parse_args()
     cmds = hist_baseline.load(a.hist)
     port = 8096
@@ -53,7 +55,8 @@ def main():
             seen_h = prev
             mq = {}
             for k in range(0, len(c)):
-                r = bench.post(port, {"prompt": render.prompt(base, c[:k], render.history_cands(seen_h, c[:k])), "n_predict": 48, "temperature": 0,
+                fs = render.fs_cands(c[:k], "~", terllmd.listdir, terllmd.BINS) if a.fs else []
+                r = bench.post(port, {"prompt": render.prompt(base, c[:k], render.history_cands(seen_h, c[:k]), fs), "n_predict": 48, "temperature": 0,
                                       "cache_prompt": True, "n_probs": 1})
                 mq[k] = policy.parse(r)
             for key in res:                                     # greedy user: accept a correct-prefix suggestion, otherwise type the next char
