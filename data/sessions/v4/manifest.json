@@ -1,0 +1,343 @@
+{
+ "version": 4,
+ "generator_commit": "0118bcb872d8c20c23acc6ee5a8dbb78426ed7bf",
+ "sessions": 1352759,
+ "shards": [
+  "shard-00000.jsonl.zst"
+ ],
+ "per_class": {
+  "created_use": {
+   "sessions": 228668,
+   "share": 0.169,
+   "target_steps": 274289,
+   "templates": 48
+  },
+  "chained": {
+   "sessions": 170829,
+   "share": 0.1263,
+   "target_steps": 518535,
+   "templates": 39
+  },
+  "error_fix": {
+   "sessions": 293890,
+   "share": 0.2173,
+   "target_steps": 472107,
+   "templates": 123
+  },
+  "state_action": {
+   "sessions": 186159,
+   "share": 0.1376,
+   "target_steps": 194043,
+   "templates": 71
+  },
+  "routine": {
+   "sessions": 175430,
+   "share": 0.1297,
+   "target_steps": 357174,
+   "templates": 78
+  },
+  "nav_noise": {
+   "sessions": 114643,
+   "share": 0.0847,
+   "target_steps": 270483,
+   "templates": 27
+  },
+  "t2c": {
+   "sessions": 183140,
+   "share": 0.1354,
+   "target_steps": 183140,
+   "templates": 7638
+  }
+ },
+ "per_source": {
+  "seed": 1247700,
+  "tldr": 83464,
+  "nl2bash": 21595
+ },
+ "templates": 8024,
+ "top_templates": [
+  [
+   "chained.clone_c",
+   6017,
+   0.0044
+  ],
+  [
+   "chained.clone_c/cmake",
+   6017,
+   0.0044
+  ],
+  [
+   "chained.clone_node",
+   6017,
+   0.0044
+  ],
+  [
+   "chained.clone_node/pnpm",
+   6017,
+   0.0044
+  ],
+  [
+   "chained.clone_node/test",
+   6017,
+   0.0044
+  ]
+ ],
+ "target_commands": {
+  "total": 2269771,
+  "unique": 483841,
+  "unique_ratio": 0.2132,
+  "distinct_1gram": {
+   "distinct": 320385,
+   "total": 5861398,
+   "ratio": 0.0547
+  },
+  "distinct_2gram": {
+   "distinct": 576321,
+   "total": 3591627,
+   "ratio": 0.1605
+  },
+  "distinct_3gram": {
+   "distinct": 375533,
+   "total": 1624594,
+   "ratio": 0.2312
+  }
+ },
+ "top30_programs": [
+  [
+   "git",
+   257930,
+   0.1136
+  ],
+  [
+   "cd",
+   245932,
+   0.1084
+  ],
+  [
+   "ls",
+   157895,
+   0.0696
+  ],
+  [
+   "npm",
+   139479,
+   0.0615
+  ],
+  [
+   "make",
+   91497,
+   0.0403
+  ],
+  [
+   "cmake",
+   86631,
+   0.0382
+  ],
+  [
+   "pip",
+   81874,
+   0.0361
+  ],
+  [
+   "cargo",
+   80953,
+   0.0357
+  ],
+  [
+   "docker",
+   74330,
+   0.0327
+  ],
+  [
+   "cat",
+   71715,
+   0.0316
+  ],
+  [
+   "source",
+   62334,
+   0.0275
+  ],
+  [
+   "tar",
+   61302,
+   0.027
+  ],
+  [
+   "python",
+   55613,
+   0.0245
+  ],
+  [
+   "python3",
+   53480,
+   0.0236
+  ],
+  [
+   "rm",
+   50387,
+   0.0222
+  ],
+  [
+   "kubectl",
+   39132,
+   0.0172
+  ],
+  [
+   "main",
+   39075,
+   0.0172
+  ],
+  [
+   "mv",
+   34151,
+   0.015
+  ],
+  [
+   "touch",
+   34101,
+   0.015
+  ],
+  [
+   "mkdir",
+   31066,
+   0.0137
+  ],
+  [
+   "systemctl",
+   29804,
+   0.0131
+  ],
+  [
+   "node",
+   25034,
+   0.011
+  ],
+  [
+   "pnpm",
+   22378,
+   0.0099
+  ],
+  [
+   "cp",
+   21172,
+   0.0093
+  ],
+  [
+   "chmod",
+   20757,
+   0.0091
+  ],
+  [
+   "find",
+   20100,
+   0.0089
+  ],
+  [
+   "unzip",
+   19990,
+   0.0088
+  ],
+  [
+   "pwd",
+   17454,
+   0.0077
+  ],
+  [
+   "less",
+   16963,
+   0.0075
+  ],
+  [
+   "grep",
+   16952,
+   0.0075
+  ]
+ ],
+ "distinct_programs": 8467,
+ "unverified_steps_share": 0.0743,
+ "flags": {
+  "checked_targets": 1334074,
+  "with_unknown_flag": 0,
+  "rate": 0.0,
+  "top_unknown": []
+ },
+ "bash_n_failures": [],
+ "secret_sessions": 0,
+ "exact_dup_sessions": 0,
+ "split": {
+  "train_sessions": 1290370,
+  "val_sessions": 62389,
+  "train_templates": 7635,
+  "val_templates": 389
+ },
+ "tokens": {
+  "sample": 20000,
+  "avg_tokens_per_example": 60.8,
+  "max_in_sample": 123,
+  "examples_rendered": 5261040,
+  "estimated_total_tokens": 320075097
+ },
+ "simulator_agreement": {
+  "step": 1.0,
+  "session": 1.0,
+  "sessions_replayed": 800,
+  "opaque_steps_excluded": 167
+ },
+ "gates": {
+  "no_duplicate_ids": true,
+  "no_exact_duplicates": true,
+  "template_cap<=0.5%": true,
+  "program_cap<=15%": true,
+  "no_secrets": true,
+  "bash_n_clean": true,
+  "val_split_by_template": true
+ },
+ "gates_passed": true,
+ "export": {
+  "cuts": 2,
+  "p_other": 0.25,
+  "train": {
+   "examples": 5019855,
+   "tokens": 288751986,
+   "completion_tokens": 25413286
+  },
+  "val": {
+   "examples": 241042,
+   "tokens": 13901073,
+   "completion_tokens": 1229470
+  },
+  "total_tokens": 302653059,
+  "total_examples": 5260897,
+  "per_class": {
+   "created_use": {
+    "examples": 730455,
+    "tokens": 31349063
+   },
+   "chained": {
+    "examples": 1189403,
+    "tokens": 87411170
+   },
+   "error_fix": {
+    "examples": 1008420,
+    "tokens": 66625158
+   },
+   "state_action": {
+    "examples": 529916,
+    "tokens": 32073159
+   },
+   "routine": {
+    "examples": 781303,
+    "tokens": 39663717
+   },
+   "nav_noise": {
+    "examples": 561487,
+    "tokens": 23400923
+   },
+   "t2c": {
+    "examples": 459913,
+    "tokens": 22129869
+   }
+  }
+ }
+}
