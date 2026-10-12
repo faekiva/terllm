@@ -23,7 +23,7 @@ def dnode(owner="dev", mode=0o755):
 class FS:
     def __init__(self):
         self.root = dnode("root")
-        for p, o in [("/etc", "root"), ("/usr", "root"), ("/usr/local", "root"), ("/usr/local/bin", "root"),
+        for p, o in [("/etc", "root"), ("/usr", "root"), ("/usr/local", "root"), ("/usr/local/bin", "root"), ("/usr/share", "root"), ("/usr/lib", "root"), ("/usr/bin", "root"),
                      ("/opt", "root"), ("/var", "root"), ("/home", "root"), (HOME, "dev"), ("/tmp", "dev"), ("/srv", "dev")]:
             self.mkdir(p, owner=o)
         self.root.children["etc"].children["hosts"] = Node("f", "127.0.0.1 localhost\n", owner="root")

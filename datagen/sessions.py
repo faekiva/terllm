@@ -7,6 +7,7 @@ import re
 
 import yaml
 
+from fixtures import NAMED
 from sim.errors import Unsupported
 from sim.shell import Sim
 from wordlists import base_dir, draw, pick
@@ -32,6 +33,14 @@ def load_templates(path=SCEN):
                 spec = {**t, **{k: v for k, v in ov.items() if k != "vars"}}
                 spec["vars"] = {**t.get("vars", {}), **ov.get("vars", {})}
                 tid = t["id"] + (f"/{vname}" if vname else "")
+                if "foreach" in spec:          # one template per item: the held-out split then tests unseen tools/modules/errors
+                    (name, items), = spec.pop("foreach").items()
+                    items = NAMED[items[1:]] if isinstance(items, str) else items
+                    for it in items:
+                        key = re.sub(r"[^\w.+-]", "_", str(it[0] if isinstance(it, (list, tuple)) else it))
+                        sp = {**spec, "vars": {name: {"choice": [list(it) if isinstance(it, tuple) else it]}, **spec["vars"]}, "template_id": f"{tid}@{key}"}
+                        out[sp["template_id"]] = sp
+                    continue
                 spec["template_id"] = tid
                 out[tid] = spec
     return out
@@ -49,7 +58,11 @@ def typo(r, w):
 
 
 def fmt(s, v):
-    return s.format(**v) if isinstance(s, str) else s
+    if not isinstance(s, str):
+        return s
+    out = s.format(**v)
+    # foreach items carry their own {placeholders}: resolve a second time, only for known variable names
+    return re.sub(r"\{(\w+)\}", lambda m: str(v[m.group(1)]) if m.group(1) in v else m.group(0), out)
 
 
 def noise_pool(sim):

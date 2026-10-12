@@ -25,7 +25,7 @@ PIP = ["flask", "requests", "numpy", "pandas", "django", "fastapi", "uvicorn", "
 NPM = ["express", "react", "lodash", "axios", "typescript", "vite", "jest", "eslint", "prettier", "dotenv", "cors", "nodemon", "mocha", "chalk", "commander"]
 # (command, apt package): commands absent from the sandbox image
 APT_TOOLS = [("rg", "ripgrep"), ("tree", "tree"), ("jq", "jq"), ("htop", "htop"), ("vim", "vim"), ("tmux", "tmux"), ("ncdu", "ncdu"), ("sqlite3", "sqlite3"),
-             ("ffmpeg", "ffmpeg"), ("rsync", "rsync"), ("lsof", "lsof"), ("strace", "strace"), ("nano", "nano"), ("screen", "screen"), ("ag", "silversearcher-ag")]
+             ("ffmpeg", "ffmpeg"), ("rsync", "rsync"), ("lsof", "lsof"), ("strace", "strace"), ("nano", "nano"), ("screen", "screen"), ("ag", "silversearcher-ag")]  # legacy small pool
 
 
 def pick(r, xs):

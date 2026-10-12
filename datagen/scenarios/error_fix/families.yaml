@@ -1,0 +1,58 @@
+# One template per item of the named list (see fixtures.NAMED): the template_id split then holds out whole tools/modules/typos.
+- id: error_fix.cnf
+  class: error_fix
+  vars: {f: {gen: file_txt}}
+  foreach: {t: "@apt_tools"}
+  steps: [{cmd: "{t[0]} --version", expect: fail}, {cmd: "sudo apt install {t[1]}", target: true}]
+  variants:
+    arg: {steps: [{cmd: "{t[0]} {f}", expect: fail}, {cmd: "sudo apt install {t[1]}", target: true}, {cmd: "{t[0]} {f}", target: true}]}
+    y: {steps: [{cmd: "{t[0]}", expect: fail}, {cmd: "sudo apt install -y {t[1]}", target: true}]}
+    update: {steps: [{cmd: "{t[0]} --help", expect: fail}, {cmd: "sudo apt update", target: true}, {cmd: "sudo apt install {t[1]}", target: true}]}
+    nosudo: {steps: [{cmd: "{t[0]}", expect: fail}, {cmd: "apt install {t[1]}", expect: fail}, {cmd: "sudo apt install {t[1]}", target: true}]}
+- id: error_fix.module
+  class: error_fix
+  vars: {d: {gen: project}}
+  foreach: {m: "@pip_modules"}
+  setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate", "echo \"import {m[0]}\" > app.py"]
+  steps: [{cmd: "python app.py", expect: fail}, {cmd: "pip install {m[1]}", target: true}, {cmd: "python app.py", target: true}]
+  variants:
+    py3: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate", "echo \"import {m[0]}\" > main.py"], steps: [{cmd: "python3 main.py", expect: fail}, {cmd: "pip install {m[1]}", target: true}]}
+    req: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate", "echo \"import {m[0]}\" > app.py"], steps: [{cmd: "python app.py", expect: fail}, {cmd: "echo {m[1]} >> requirements.txt", target: true}, {cmd: "pip install -r requirements.txt", target: true}]}
+- id: error_fix.typo
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}, cw: {fmt: "{c[0]}"}, ty: {typo: cw}}
+  foreach: {c: "@typo_cmds"}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "{ty} {c[1]}", expect: fail}, {cmd: "{c[0]} {c[1]}", target: true}]
+- id: error_fix.perm
+  class: error_fix
+  vars: {d: {gen: word}, f: {gen: file_txt}}
+  foreach: {p: [["mkdir /opt/{d}", "sudo mkdir /opt/{d}"], ["mkdir /usr/local/{d}", "sudo mkdir /usr/local/{d}"], ["mkdir /etc/{d}", "sudo mkdir /etc/{d}"],
+                ["mkdir /var/{d}", "sudo mkdir /var/{d}"], ["mkdir /usr/share/{d}", "sudo mkdir /usr/share/{d}"], ["mkdir -p /opt/{d}/bin", "sudo mkdir -p /opt/{d}/bin"],
+                ["touch /etc/{f}", "sudo touch /etc/{f}"], ["touch /usr/local/{f}", "sudo touch /usr/local/{f}"], ["touch /opt/{f}", "sudo touch /opt/{f}"],
+                ["touch /usr/lib/{f}", "sudo touch /usr/lib/{f}"], ["cp {f} /usr/local/bin/", "sudo cp {f} /usr/local/bin/"], ["cp {f} /etc/", "sudo cp {f} /etc/"],
+                ["cp {f} /opt/", "sudo cp {f} /opt/"], ["cp {f} /usr/share/", "sudo cp {f} /usr/share/"], ["mv {f} /usr/local/bin/", "sudo mv {f} /usr/local/bin/"],
+                ["mv {f} /opt/", "sudo mv {f} /opt/"], ["mv {f} /etc/", "sudo mv {f} /etc/"], ["echo hi > /etc/{f}", "echo hi | sudo tee /etc/{f}"],
+                ["echo hi >> /etc/hosts", "echo hi | sudo tee -a /etc/hosts"], ["echo hi > /opt/{f}", "echo hi | sudo tee /opt/{f}"], ["rm /etc/hosts", "sudo rm /etc/hosts"],
+                ["cp -r {d} /opt/", "sudo cp -r {d} /opt/"], ["cp -r {d} /usr/local/", "sudo cp -r {d} /usr/local/"], ["mv {d} /opt/", "sudo mv {d} /opt/"]]}
+  setup: ["touch {f}", "mkdir {d}", "touch {d}/inner.txt"]
+  steps: [{cmd: "{p[0]}", expect: fail}, {cmd: "{p[1]}", target: true}]
+  variants:
+    ls: {steps: [{cmd: "ls", target: false}, {cmd: "{p[0]}", expect: fail}, {cmd: "{p[1]}", target: true}, {cmd: "ls", target: true}]}
+- id: error_fix.dirop
+  class: error_fix
+  vars: {d: {gen: word}, a: {gen: word}, b: {gen: project}, f: {gen: file_txt}}
+  foreach: {p: [["rm {d}", "rm -r {d}"], ["rm -f {d}", "rm -rf {d}"], ["cp {d} {b}", "cp -r {d} {b}"], ["mv {d} {b}/{a}", "mkdir {b}"], ["mkdir {b}/{a}", "mkdir -p {b}/{a}"],
+                ["mkdir {d}", "cd {d}"], ["rmdir {d}", "rm -r {d}"], ["cat {d}", "ls {d}"], ["touch {b}/{f}", "mkdir {b}"], ["cd {f}", "cat {f}"], ["ls {b}", "ls"],
+                ["cat {b}", "ls"], ["cp {b} {a}", "ls"], ["cd {b}", "mkdir {b}"], ["rm {b}", "ls"], ["head {b}", "ls"], ["mv {b} {a}", "ls"], ["cp {f} {b}/{f}", "mkdir {b}"]]}
+  setup: ["mkdir {d}", "touch {d}/inner.txt", "echo hello > {f}"]
+  steps: [{cmd: "{p[0]}", expect: fail}, {cmd: "{p[1]}", target: true}]
+- id: error_fix.gittypo
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}}
+  foreach: {g: [[stauts, status], [staus, status], [statu, status], [stats, status], [psuh, push], [puhs, push], [pushh, push], [pul, pull], [pll, pull], [brach, branch],
+                [brnach, branch], [banch, branch], [fecth, fetch], [fetc, fetch], [lgo, log], [dif, diff], [stsh, stash], [remot, remote], [tga, tag]]}
+  setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git {g[0]}", expect: fail}, {cmd: "git {g[1]}", target: true}]
+  variants:
+    dirty: {setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo x >> README.md"], steps: [{cmd: "git {g[0]}", expect: fail}, {cmd: "git {g[1]}", target: true}]}

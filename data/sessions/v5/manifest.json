@@ -1,0 +1,297 @@
+{
+ "version": 5,
+ "generator_commit": "143e87c317fa3a052ba8f7c3ab3b34facdc9479b",
+ "sessions": 153426,
+ "shards": [
+  "shard-00000.jsonl.zst"
+ ],
+ "per_class": {
+  "created_use": {
+   "sessions": 17632,
+   "share": 0.1149,
+   "target_steps": 21184,
+   "templates": 48
+  },
+  "chained": {
+   "sessions": 12239,
+   "share": 0.0798,
+   "target_steps": 36764,
+   "templates": 39
+  },
+  "error_fix": {
+   "sessions": 41690,
+   "share": 0.2717,
+   "target_steps": 62579,
+   "templates": 853
+  },
+  "state_action": {
+   "sessions": 21400,
+   "share": 0.1395,
+   "target_steps": 22200,
+   "templates": 71
+  },
+  "routine": {
+   "sessions": 23104,
+   "share": 0.1506,
+   "target_steps": 47466,
+   "templates": 78
+  },
+  "nav_noise": {
+   "sessions": 10576,
+   "share": 0.0689,
+   "target_steps": 24927,
+   "templates": 27
+  },
+  "t2c": {
+   "sessions": 26785,
+   "share": 0.1746,
+   "target_steps": 26785,
+   "templates": 7638
+  }
+ },
+ "per_source": {
+  "seed": 136134,
+  "tldr": 12186,
+  "nl2bash": 5106
+ },
+ "templates": 8754,
+ "top_templates": [
+  [
+   "created_use.cargo_new",
+   400,
+   0.0026
+  ],
+  [
+   "created_use.clone_cd",
+   400,
+   0.0026
+  ],
+  [
+   "created_use.clone_cd/gitlab",
+   400,
+   0.0026
+  ],
+  [
+   "created_use.cp_dir_cd",
+   400,
+   0.0026
+  ],
+  [
+   "created_use.clone_cd/named",
+   400,
+   0.0026
+  ]
+ ],
+ "target_commands": {
+  "total": 241905,
+  "unique": 62810,
+  "unique_ratio": 0.2596,
+  "distinct_1gram": {
+   "distinct": 53475,
+   "total": 699224,
+   "ratio": 0.0765
+  },
+  "distinct_2gram": {
+   "distinct": 87719,
+   "total": 457319,
+   "ratio": 0.1918
+  },
+  "distinct_3gram": {
+   "distinct": 58930,
+   "total": 238968,
+   "ratio": 0.2466
+  }
+ },
+ "top30_programs": [
+  [
+   "git",
+   28812,
+   0.1191
+  ],
+  [
+   "apt",
+   22576,
+   0.0933
+  ],
+  [
+   "pip",
+   18836,
+   0.0779
+  ],
+  [
+   "cd",
+   15677,
+   0.0648
+  ],
+  [
+   "ls",
+   12285,
+   0.0508
+  ],
+  [
+   "npm",
+   11126,
+   0.046
+  ],
+  [
+   "docker",
+   9590,
+   0.0396
+  ],
+  [
+   "python",
+   8439,
+   0.0349
+  ],
+  [
+   "cargo",
+   6971,
+   0.0288
+  ],
+  [
+   "make",
+   6952,
+   0.0287
+  ],
+  [
+   "echo",
+   5646,
+   0.0233
+  ],
+  [
+   "cmake",
+   5458,
+   0.0226
+  ],
+  [
+   "cat",
+   5452,
+   0.0225
+  ],
+  [
+   "kubectl",
+   5134,
+   0.0212
+  ],
+  [
+   "tar",
+   4511,
+   0.0186
+  ],
+  [
+   "systemctl",
+   4181,
+   0.0173
+  ],
+  [
+   "rm",
+   3985,
+   0.0165
+  ],
+  [
+   "source",
+   3707,
+   0.0153
+  ],
+  [
+   "find",
+   3033,
+   0.0125
+  ],
+  [
+   "main",
+   3014,
+   0.0125
+  ],
+  [
+   "mv",
+   2942,
+   0.0122
+  ],
+  [
+   "python3",
+   2664,
+   0.011
+  ],
+  [
+   "touch",
+   2427,
+   0.01
+  ],
+  [
+   "node",
+   2121,
+   0.0088
+  ],
+  [
+   "pnpm",
+   2004,
+   0.0083
+  ],
+  [
+   "mkdir",
+   1990,
+   0.0082
+  ],
+  [
+   "cp",
+   1910,
+   0.0079
+  ],
+  [
+   "pwd",
+   1665,
+   0.0069
+  ],
+  [
+   "ssh",
+   1651,
+   0.0068
+  ],
+  [
+   "grep",
+   1442,
+   0.006
+  ]
+ ],
+ "distinct_programs": 5259,
+ "unverified_steps_share": 0.1351,
+ "flags": {
+  "checked_targets": 122613,
+  "with_unknown_flag": 0,
+  "rate": 0.0,
+  "top_unknown": []
+ },
+ "bash_n_failures": [],
+ "secret_sessions": 0,
+ "exact_dup_sessions": 0,
+ "split": {
+  "train_sessions": 146088,
+  "val_sessions": 7338,
+  "train_templates": 8326,
+  "val_templates": 428
+ },
+ "tokens": {
+  "sample": 20000,
+  "avg_tokens_per_example": 47.4,
+  "max_in_sample": 114,
+  "examples_rendered": 564104,
+  "estimated_total_tokens": 26740447
+ },
+ "simulator_agreement": {
+  "step": 1.0,
+  "session": 1.0,
+  "sessions_replayed": 800,
+  "opaque_steps_excluded": 343
+ },
+ "gates": {
+  "no_duplicate_ids": true,
+  "no_exact_duplicates": true,
+  "template_cap<=0.5%": true,
+  "program_cap<=15%": true,
+  "no_secrets": true,
+  "bash_n_clean": true,
+  "val_split_by_template": true
+ },
+ "gates_passed": true
+}

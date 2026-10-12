@@ -20,11 +20,10 @@ kubectl ssh kill top tee sort uniq diff sed awk xargs journalctl scp docker-comp
 MISSING = set()  # anything not in PRESENT is "command not found" (matches the sandbox image)
 OPAQUE = {"docker-compose", "journalctl", "scp", "apt", "apt-get", "systemctl", "service", "docker", "kubectl", "ssh", "kill", "top", "ps", "df",
           "du", "free", "uptime", "uname", "date", "hostname", "id", "history", "env", "printenv", "sleep"}
-APT_PROVIDES = {"ripgrep": "rg", "tree": "tree", "jq": "jq", "htop": "htop", "vim": "vim", "nano": "nano", "tmux": "tmux",
-                "ncdu": "ncdu", "bat": "bat", "fd-find": "fdfind", "sqlite3": "sqlite3", "golang-go": "go", "default-jre": "java",
-                "ffmpeg": "ffmpeg", "imagemagick": "convert", "net-tools": "netstat", "dnsutils": "dig", "lsof": "lsof",
-                "strace": "strace", "rsync": "rsync", "screen": "screen", "redis-tools": "redis-cli", "postgresql-client": "psql",
-                "neofetch": "neofetch", "httpie": "http", "shellcheck": "shellcheck", "silversearcher-ag": "ag"}
+APT_PROVIDES = {}
+for _c, _p in FX.APT_TOOLS:
+    APT_PROVIDES.setdefault(_p, []).append(_c)
+VERSIONABLE = {"node", "make", "gcc", "g++", "cargo", "curl", "npm", "wget", "cmake", "tar", "ls", "cat", "grep", "find", "cp", "mv", "git"}
 LONG_RUNNING = re.compile(r"^(npm (start|run dev|run serve)|python3? -m http\.server( \d+)?|ping .*|tail -f .*|top|htop|sleep \d{3,}|cargo run --release)$")
 
 
@@ -385,6 +384,8 @@ class Sim:
         if c in ("deactivate",) and self.venv:
             self.venv = None; self.env.pop("VIRTUAL_ENV", None)
             return R(0)
+        if args in (["--version"], ["-v"]) and c in VERSIONABLE:
+            return R(0, f"{c} (sim) 1.0\n")
         fn = getattr(self, "c_" + ("dot" if c == "." else re.sub(r"\W", "_", c)), None) if "/" not in c else None
         if "/" in c:
             return self.exec_path(c, args)
@@ -421,7 +422,7 @@ class Sim:
                 if p not in APT_PROVIDES and p not in PRESENT:
                     return R(100, "", f"E: Unable to locate package {p}\n")
                 if p in APT_PROVIDES:
-                    self.fake.add(APT_PROVIDES[p])
+                    self.fake.update(APT_PROVIDES[p])
         return R(0)
 
     def opaque(self, c, args):

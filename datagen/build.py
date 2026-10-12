@@ -155,9 +155,9 @@ def fit_quotas(tasks, cls_of, cap_n, target_cap, workers):
     return [(k, t, q[t], sd) for k, t, _, sd in tasks], {p: round(v, 4) for p, v in shares.most_common(6)}
 
 
-def plan(n, cap, seed):
+def plan(n, cap, seed, per_template=0):
     """-> list of tasks (kind, template_id, quota, seed) and the plan summary."""
-    cap_n = max(1, int(n * cap))
+    cap_n = per_template or max(1, int(n * cap))
     rng = random.Random(seed)
     seeds = S.load_templates()
     by_class = collections.defaultdict(list)
@@ -174,7 +174,7 @@ def plan(n, cap, seed):
             if src == "seed":
                 ids = sorted(by_class[cls])
                 qs = {t: max(1, min(cap_n, tot // max(len(ids), 1))) for t in ids}
-                extra = tot - sum(qs.values())
+                extra = tot - sum(qs.values()) if len(ids) * cap_n > tot else 0
                 for i, t in enumerate(ids):
                     if i < extra and qs[t] + 1 <= cap_n:
                         qs[t] += 1
@@ -223,11 +223,12 @@ def main():
     ap.add_argument("--workers", type=int, default=7)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--cap", type=float, default=0.005)
+    ap.add_argument("--per-template", type=int, default=0, help="fixed session quota for every seed template (overrides the class-share planner)")
     a = ap.parse_args()
-    tasks, summary = plan(a.sessions, a.cap, a.seed)
+    tasks, summary = plan(a.sessions, a.cap, a.seed, a.per_template)
     seeds = S.load_templates()
     cls_of = {t[1]: (seeds[t[1]]["class"] if t[0] == "seed" else "t2c") for t in tasks}
-    tasks, top_shares = fit_quotas(tasks, cls_of, max(1, int(a.sessions * a.cap)), 0.12, a.workers)
+    tasks, top_shares = fit_quotas(tasks, cls_of, a.per_template or max(1, int(a.sessions * a.cap)), 0.12, a.workers)
     print("program shares after quota fitting (est.):", top_shares)
     out_dir = ROOT / "data" / "sessions" / f"v{a.version}"
     for old in out_dir.glob("shard-*"):
