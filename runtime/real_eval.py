@@ -11,6 +11,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(__file__))
 import bench  # noqa: E402
+import policy  # noqa: E402
 import hist_baseline  # noqa: E402
 
 sys.path.insert(0, str(bench.ROOT / "datagen"))
@@ -42,7 +43,7 @@ def main():
                 time.sleep(0.1)
         idx = sorted(random.Random(1).sample(range(len(cmds) // 5, len(cmds)), min(a.n, len(cmds) - len(cmds) // 5)))
         ths = [float(x) for x in a.thresholds.split(",")]
-        res = {("hist",): [0, 0, 0]}                                     # [chars_saved, shown, wrong]
+        res = {("hist", 0): [0, 0, 0]}                                     # [chars_saved, shown, wrong]
         for t in ths:
             res[("model", t)] = [0, 0, 0]; res[("hybrid", t)] = [0, 0, 0]
         total = 0
@@ -52,26 +53,21 @@ def main():
             seen_h = prev
             mq = {}
             for k in range(0, len(c)):
-                body = {"prompt": render.prompt(base, c[:k], render.history_cands(seen_h, c[:k])), "n_predict": 48, "temperature": 0, "cache_prompt": True, "n_probs": 1}
-                r = bench.post(port, body)
-                text = r["content"].split("<|end|>")[0]
-                pr = min([x.get("prob", 2.718 ** x.get("logprob", 0)) for x in r.get("completion_probabilities", [])], default=1.0)
-                mq[k] = (text, pr)
-            for key in res:
-                done = False
-                for k in range(0, len(c)):
-                    text, pr = mq[k]
+                r = bench.post(port, {"prompt": render.prompt(base, c[:k], render.history_cands(seen_h, c[:k])), "n_predict": 48, "temperature": 0,
+                                      "cache_prompt": True, "n_probs": 1})
+                mq[k] = policy.parse(r)
+            for key in res:                                     # greedy user: accept a correct-prefix suggestion, otherwise type the next char
+                k = 0
+                while k < len(c):
                     h = next((x for x in reversed(seen_h) if k and x.startswith(c[:k])), "")[k:]
-                    if key[0] == "hist": s = h
-                    elif key[0] == "model": s = text if pr >= key[1] else ""
-                    else: s = text if pr >= key[1] else h
-                    if not s:
-                        continue
-                    res[key][1] += 1
-                    if c[:k] + s == c:
-                        res[key][0] += len(c) - k - 1; done = True; break
-                    if not c.startswith(c[:k] + s):
-                        res[key][2] += 1                                  # visible wrong suggestion at this prefix
+                    m = policy.confident_prefix(mq[k], key[1]) if key[0] != "hist" else ""
+                    s = h if key[0] == "hist" else (m if key[0] == "model" else (m or h))
+                    if s and c.startswith(c[:k] + s):
+                        if len(s) > 1:
+                            res[key][0] += len(s) - 1; res[key][1] += 1; k += len(s); continue
+                    elif s:
+                        res[key][2] += 1                         # visible wrong suggestion
+                    k += 1
         for key, (sv, shown, wrong) in res.items():
             print(f"{'/'.join(map(str, key)):14s} chars_saved={sv/total:6.1%}  wrong_suggestion_events_per_cmd={wrong/len(idx):.2f}")
     finally:

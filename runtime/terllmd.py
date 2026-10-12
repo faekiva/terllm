@@ -5,7 +5,7 @@ Protocol: one tab-separated line per message.
                     q <seq> <buf>                     (the user typed `buf`)
   daemon -> shell   s <seq> <buf> <completion>        (empty completion = abstain)
 
-uv run runtime/terllmd.py [--model models/gguf/terllm-v1-q4_k_m.gguf] [--threshold 0.8]
+uv run runtime/terllmd.py [--model models/gguf/terllm-v2-q4_k_m.gguf] [--threshold 0.8]
 """
 import argparse
 import json
@@ -22,6 +22,7 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "datagen"))
 import hist_baseline  # noqa: E402
+import policy  # noqa: E402
 import quality  # noqa: E402
 import render  # noqa: E402  (the training prompt format is the single source of truth)
 
@@ -70,8 +71,7 @@ class Backend:
     def complete(self, prompt):
         body = json.dumps({"prompt": prompt, "n_predict": 48, "temperature": 0, "cache_prompt": True, "n_probs": 1}).encode()
         r = json.load(urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{self.port}/completion", body, {"Content-Type": "application/json"}), timeout=5))
-        probs = [p.get("prob", 2.718 ** p.get("logprob", 0)) for p in r.get("completion_probabilities", [])]
-        return r["content"], min(probs, default=1.0)
+        return policy.parse(r)
 
 
 class Session:
@@ -127,10 +127,10 @@ def serve(backend):
                     comp = ""
                     try:
                         prompt, cands = ses.prompt(buf)
-                        text, conf = backend.complete(prompt)
-                        text = text.split("<|end|>")[0]
-                        comp = text if conf >= backend.threshold and "\n" not in text else ""
-                        ses.events.append({"typed": buf, "raw": text, "conf": round(conf, 3), "shown": bool(comp), "cands": cands})
+                        toks = backend.complete(prompt)
+                        comp = policy.confident_prefix(toks, backend.threshold)
+                        comp = "" if "\n" in comp else comp
+                        ses.events.append({"typed": buf, "toks": [[t, round(p, 3)] for t, p in toks], "shown": comp, "cands": cands})
                     except Exception as e:                     # never break the shell
                         print("query failed:", e, file=sys.stderr)
                     try:
@@ -157,9 +157,9 @@ def serve(backend):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=str(ROOT / "models/gguf/terllm-v1-q4_k_m.gguf"))
+    ap.add_argument("--model", default=str(ROOT / "models/gguf/terllm-v2-q4_k_m.gguf"))
     ap.add_argument("--threads", type=int, default=4)
-    ap.add_argument("--threshold", type=float, default=0.8, help="abstain if the least confident token is below this probability")
+    ap.add_argument("--threshold", type=float, default=0.8, help="show the longest prefix of the completion whose tokens all have at least this probability")
     a = ap.parse_args()
     b = Backend(a.model, a.threads, a.threshold)
     try:

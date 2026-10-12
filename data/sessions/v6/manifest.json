@@ -1,0 +1,299 @@
+{
+ "version": 6,
+ "generator_commit": "3d3c3ee50d2da8e28b77b61789b875197533848b",
+ "sessions": 179953,
+ "shards": [
+  "shard-00000.jsonl.zst",
+  "shard-llm-00000.jsonl.zst"
+ ],
+ "per_class": {
+  "created_use": {
+   "sessions": 13217,
+   "share": 0.0734,
+   "target_steps": 15879,
+   "templates": 48
+  },
+  "chained": {
+   "sessions": 10838,
+   "share": 0.0602,
+   "target_steps": 33926,
+   "templates": 774
+  },
+  "error_fix": {
+   "sessions": 68091,
+   "share": 0.3784,
+   "target_steps": 104733,
+   "templates": 1083
+  },
+  "state_action": {
+   "sessions": 16605,
+   "share": 0.0923,
+   "target_steps": 18660,
+   "templates": 331
+  },
+  "routine": {
+   "sessions": 19275,
+   "share": 0.1071,
+   "target_steps": 41840,
+   "templates": 630
+  },
+  "nav_noise": {
+   "sessions": 7931,
+   "share": 0.0441,
+   "target_steps": 18683,
+   "templates": 27
+  },
+  "t2c": {
+   "sessions": 43996,
+   "share": 0.2445,
+   "target_steps": 43996,
+   "templates": 7638
+  }
+ },
+ "per_source": {
+  "seed": 147016,
+  "tldr": 21340,
+  "nl2bash": 7440,
+  "llm": 4157
+ },
+ "templates": 10531,
+ "top_templates": [
+  [
+   "created_use.cargo_new",
+   300,
+   0.0017
+  ],
+  [
+   "created_use.clone_cd",
+   300,
+   0.0017
+  ],
+  [
+   "created_use.clone_cd/gitlab",
+   300,
+   0.0017
+  ],
+  [
+   "created_use.clone_cd/ls",
+   300,
+   0.0017
+  ],
+  [
+   "created_use.cp_dir_cd",
+   300,
+   0.0017
+  ]
+ ],
+ "target_commands": {
+  "total": 277717,
+  "unique": 75723,
+  "unique_ratio": 0.2727,
+  "distinct_1gram": {
+   "distinct": 60839,
+   "total": 831463,
+   "ratio": 0.0732
+  },
+  "distinct_2gram": {
+   "distinct": 112627,
+   "total": 553746,
+   "ratio": 0.2034
+  },
+  "distinct_3gram": {
+   "distinct": 81044,
+   "total": 298818,
+   "ratio": 0.2712
+  }
+ },
+ "top30_programs": [
+  [
+   "pip",
+   30397,
+   0.1095
+  ],
+  [
+   "git",
+   29951,
+   0.1078
+  ],
+  [
+   "apt",
+   25770,
+   0.0928
+  ],
+  [
+   "cd",
+   15355,
+   0.0553
+  ],
+  [
+   "ls",
+   14687,
+   0.0529
+  ],
+  [
+   "python",
+   11926,
+   0.0429
+  ],
+  [
+   "npm",
+   10816,
+   0.0389
+  ],
+  [
+   "echo",
+   10607,
+   0.0382
+  ],
+  [
+   "docker",
+   8210,
+   0.0296
+  ],
+  [
+   "cargo",
+   6338,
+   0.0228
+  ],
+  [
+   "make",
+   5945,
+   0.0214
+  ],
+  [
+   "cat",
+   5554,
+   0.02
+  ],
+  [
+   "cmake",
+   4849,
+   0.0175
+  ],
+  [
+   "kubectl",
+   4381,
+   0.0158
+  ],
+  [
+   "systemctl",
+   4352,
+   0.0157
+  ],
+  [
+   "find",
+   4274,
+   0.0154
+  ],
+  [
+   "rm",
+   4140,
+   0.0149
+  ],
+  [
+   "tar",
+   3943,
+   0.0142
+  ],
+  [
+   "mkdir",
+   3740,
+   0.0135
+  ],
+  [
+   "source",
+   3465,
+   0.0125
+  ],
+  [
+   "mv",
+   3348,
+   0.0121
+  ],
+  [
+   "touch",
+   3123,
+   0.0112
+  ],
+  [
+   "cp",
+   2953,
+   0.0106
+  ],
+  [
+   "python3",
+   2880,
+   0.0104
+  ],
+  [
+   "main",
+   2517,
+   0.0091
+  ],
+  [
+   "chmod",
+   2043,
+   0.0074
+  ],
+  [
+   "node",
+   1942,
+   0.007
+  ],
+  [
+   "docker-compose",
+   1828,
+   0.0066
+  ],
+  [
+   "grep",
+   1524,
+   0.0055
+  ],
+  [
+   "pnpm",
+   1507,
+   0.0054
+  ]
+ ],
+ "distinct_programs": 5444,
+ "unverified_steps_share": 0.1438,
+ "flags": {
+  "checked_targets": 139824,
+  "with_unknown_flag": 0,
+  "rate": 0.0,
+  "top_unknown": []
+ },
+ "bash_n_failures": [],
+ "secret_sessions": 0,
+ "exact_dup_sessions": 0,
+ "split": {
+  "train_sessions": 171259,
+  "val_sessions": 8694,
+  "train_templates": 10015,
+  "val_templates": 516
+ },
+ "tokens": {
+  "sample": 4000,
+  "avg_tokens_per_example": 45.5,
+  "max_in_sample": 114,
+  "examples_rendered": 636654,
+  "estimated_total_tokens": 28982559
+ },
+ "simulator_agreement": {
+  "step": 1.0,
+  "session": 1.0,
+  "sessions_replayed": 800,
+  "opaque_steps_excluded": 343
+ },
+ "gates": {
+  "no_duplicate_ids": true,
+  "no_exact_duplicates": true,
+  "template_cap<=0.5%": true,
+  "program_cap<=15%": true,
+  "no_secrets": true,
+  "bash_n_clean": true,
+  "val_split_by_template": true
+ },
+ "gates_passed": true
+}

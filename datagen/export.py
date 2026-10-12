@@ -42,7 +42,9 @@ def main():
     ap.add_argument("--cuts", type=int, default=2)
     ap.add_argument("--p-other", type=float, default=0.25)
     ap.add_argument("--p-io", type=float, default=0.5, help="share of examples that keep the previous command's stdout/stderr in the prompt")
+    ap.add_argument("--keep", default="error_fix=0.65", help="class=probability of keeping a rendered example (rebalancing, e.g. error_fix=0.65,t2c=0.8)")
     a = ap.parse_args()
+    keep = {k: float(v) for k, v in (x.split("=") for x in a.keep.split(",") if x)}
     src = ROOT / "data" / "sessions" / f"v{a.version}"
     dst = ROOT / "data" / "train" / f"v{a.version}"
     dst.mkdir(parents=True, exist_ok=True)
@@ -69,12 +71,13 @@ def main():
         for s in render.read_shard(sh):
             sp = gates.split_of(s["template_id"], s["class"])
             rng = random.Random(s["id"])
-            buf[sp].extend(render.render_session(s, rng, cuts=a.cuts, p_other=a.p_other, bank=bank, p_io=a.p_io))
+            ex = render.render_session(s, rng, cuts=a.cuts, p_other=a.p_other, bank=bank, p_io=a.p_io)
+            buf[sp].extend(e for e in ex if sp == "val" or rng.random() < keep.get(e["class"], 1.0))
             if len(buf[sp]) >= 20000:
                 flush(sp)
     for sp in outs:
         flush(sp); outs[sp].close()
-    rep = {"version": a.version, "cuts": a.cuts, "p_other": a.p_other, "p_io": a.p_io, **{sp: stat[sp] for sp in stat},
+    rep = {"version": a.version, "cuts": a.cuts, "p_other": a.p_other, "p_io": a.p_io, "keep": keep, **{sp: stat[sp] for sp in stat},
            "total_tokens": sum(stat[s]["tokens"] for s in stat), "total_examples": sum(stat[s]["examples"] for s in stat),
            "per_class": {c: {"examples": v[0], "tokens": v[1]} for c, v in by_class.items()}, "files": {sp: outs[sp].files for sp in outs}}
     (dst / "export.json").write_text(json.dumps(rep, indent=1))

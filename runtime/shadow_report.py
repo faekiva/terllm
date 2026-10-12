@@ -1,11 +1,14 @@
-"""Offline precision / coverage / chars saved from the plugin's shadow log (what the user typed, what the model said at each prefix).
+"""Offline precision / chars saved from the plugin's shadow log (what the user typed, what the model said at each prefix).
 
 uv run runtime/shadow_report.py [~/.local/share/terllm/shadow.jsonl] [--thresholds 0.5,0.7,0.8,0.9,0.95]
-A suggestion at prefix `typed` is correct iff typed + suggestion == the command that was finally run. Prints aggregates only.
+A suggestion is correct iff typed + suggestion is a prefix of the command that was finally run. chars saved = best single acceptance
+per command (len(suggestion) - 1 for the accept key). Prints aggregates only.
 """
 import argparse
 import json
 import os
+
+import policy
 
 ap = argparse.ArgumentParser()
 ap.add_argument("path", nargs="?", default="~/.local/share/terllm/shadow.jsonl")
@@ -20,24 +23,25 @@ print(f"{len(recs)} commands, {total} chars; accepted in-shell: {sum(r['accepted
 def evaluate(pick):
     saved = shown = right = wrong_cmds = 0
     for r in recs:
-        done = bad = False
+        best, bad = 0, False
         for e in r["events"]:
             s = pick(e)
             if not s:
                 continue
             shown += 1
-            if e["typed"] + s == r["cmd"]:
+            if r["cmd"].startswith(e["typed"] + s):
                 right += 1
-                if not done:
-                    saved += len(r["cmd"]) - len(e["typed"]) - 1
-                    done = True
-            elif r["cmd"].startswith(e["typed"]):
+                best = max(best, len(s) - 1)
+            else:
                 bad = True
-        wrong_cmds += bad and not done
+        saved += best
+        wrong_cmds += bad and not best
     return f"saved={saved / total:6.1%} shown={shown:5d} precision={right / max(shown, 1):6.1%} cmds_with_only_wrong_hints={wrong_cmds / len(recs):5.1%}"
 
 
-print("history ", evaluate(lambda e: e["cands"][0][len(e["typed"]):] if e.get("cands") else ""))
+hist = lambda e: e["cands"][0][len(e["typed"]):] if e.get("cands") else ""
+print("history ", evaluate(hist))
 for t in map(float, a.thresholds.split(",")):
-    print(f"model {t:<4}", evaluate(lambda e: e["raw"] if e["conf"] >= t and "\n" not in e["raw"] else ""))
-    print(f"hybrid{t:<4}", evaluate(lambda e: e["raw"] if e["conf"] >= t and "\n" not in e["raw"] else (e["cands"][0][len(e["typed"]):] if e.get("cands") else "")))
+    m = lambda e: policy.confident_prefix([tuple(x) for x in e["toks"]], t)
+    print(f"model {t:<4}", evaluate(m))
+    print(f"hybrid{t:<4}", evaluate(lambda e: m(e) or hist(e)))

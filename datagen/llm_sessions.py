@@ -122,8 +122,11 @@ def build_one(o):
             steps.append(run_step(sim, cmd, True, "any"))
         except Discard:
             break                                                 # unsupported by the simulator: keep the realistic prefix only
-    if len(steps) < 3:
+    if len(steps) < 3 or sum(st["exit"] != 0 for st in steps) > 0.4 * len(steps):
         return None
+    heads = collections.Counter(" ".join(st["cmd"].split()[:2]) for st in steps)
+    if heads.most_common(1)[0][1] > 3 or any(re.match(r"^[A-Za-z]+:\s", st["cmd"]) for st in steps):
+        return None                                               # repeated variations of one command / labels like "Typo: ..." are LLM noise
     sid = hashlib.blake2b(json.dumps([o["shell"], o["setup"], [s["cmd"] for s in steps]]).encode(), digest_size=8).hexdigest()
     return {"id": f"s-{sid}", "class": o["class"], "source": "llm", "template_id": f"llm.{o['task']}", "shell": o["shell"], "setup": o["setup"], "steps": steps}
 

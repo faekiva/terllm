@@ -10,7 +10,7 @@ import modal
 
 app = modal.App("terllm-llmgen")
 vol = modal.Volume.from_name("terllm", create_if_missing=True)
-image = (modal.Image.debian_slim(python_version="3.12").pip_install("vllm==0.11.0", "huggingface_hub")
+image = (modal.Image.debian_slim(python_version="3.12").pip_install("vllm==0.11.0", "transformers==4.57.3", "huggingface_hub")
          .env({"HF_HOME": "/data/hf", "VLLM_LOGGING_LEVEL": "WARNING"}))
 MODEL = "Qwen/Qwen2.5-Coder-7B-Instruct"
 

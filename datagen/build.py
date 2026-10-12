@@ -197,14 +197,15 @@ def plan(n, cap, seed, per_template=0):
 
 
 class ShardWriter:
-    def __init__(self, d, limit=100 * 2**20):
+    def __init__(self, d, limit=100 * 2**20, prefix="shard"):
+        self.prefix = prefix
         self.d, self.limit, self.n, self.f, self.w, self.paths = d, limit, 0, None, None, []
         d.mkdir(parents=True, exist_ok=True)
 
     def write(self, obj):
         if self.f is None or self.f.tell() >= self.limit:
             self.close()
-            p = self.d / f"shard-{self.n:05d}.jsonl.zst"
+            p = self.d / f"{self.prefix}-{self.n:05d}.jsonl.zst"
             self.n += 1
             self.paths.append(p.name)
             self.f = open(p, "wb")
@@ -223,13 +224,35 @@ def llm_sessions(limit, per_template, seed):
         return []
     by_t, rng, out = collections.defaultdict(list), random.Random(seed), []
     for s in render.read_shard(p):
-        if not quality.session_has_secret(s) and not any(quality.unknown_flags(st["cmd"]) for st in s["steps"]):
+        git = sum(st["cmd"].startswith("git ") for st in s["steps"]) / len(s["steps"])
+        if git <= 0.34 and not quality.session_has_secret(s) and not any(quality.unknown_flags(st["cmd"]) for st in s["steps"]):   # LLMs love git: keep the program cap
             by_t[s["template_id"]].append(s)
     for ss in by_t.values():
         rng.shuffle(ss)
         out += ss[:per_template]
     rng.shuffle(out)
     return out[:limit]
+
+
+def append_llm(out_dir, a):
+    """Add LLM sessions to an existing version as shard-llm-*.jsonl.zst (exact-dedup against what is already there)."""
+    gseen = set()
+    for sh in sorted(out_dir.glob("shard-*.jsonl.zst")):
+        if "llm" not in sh.name:
+            gseen.update(render.digest(c) for s in render.read_shard(sh) for c in render.canonical(s))
+    for old in out_dir.glob("shard-llm-*"):
+        old.unlink()
+    wr = ShardWriter(out_dir, prefix="shard-llm")
+    kept = collections.Counter()
+    for s in llm_sessions(a.append_llm, a.llm_per_template, a.seed):
+        hs = [render.digest(c) for c in render.canonical(s)]
+        if not hs or any(h in gseen for h in hs):
+            continue
+        gseen.update(hs)
+        wr.write(s)
+        kept[s["class"]] += 1
+    wr.close()
+    print(f"appended {sum(kept.values())} LLM sessions {dict(kept)}")
 
 
 def main():
@@ -240,9 +263,13 @@ def main():
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--cap", type=float, default=0.005)
     ap.add_argument("--llm", type=int, default=0, help="extra sessions from data/raw/llm/sessions.jsonl.zst (LLM-proposed, simulator-executed)")
+    ap.add_argument("--append-llm", type=int, default=0, help="only append up to N LLM sessions to an already built version")
     ap.add_argument("--llm-per-template", type=int, default=6)
     ap.add_argument("--per-template", type=int, default=0, help="fixed session quota for every seed template (overrides the class-share planner)")
     a = ap.parse_args()
+    if a.append_llm:
+        append_llm(ROOT / "data" / "sessions" / f"v{a.version}", a)
+        return
     tasks, summary = plan(a.sessions, a.cap, a.seed, a.per_template)
     seeds = S.load_templates()
     cls_of = {t[1]: (seeds[t[1]]["class"] if t[0] == "seed" else "t2c") for t in tasks}

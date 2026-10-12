@@ -39,7 +39,7 @@ def examples(version, n, seed=0):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
-    ap.add_argument("--version", type=int, default=5)
+    ap.add_argument("--version", type=int, default=6)
     ap.add_argument("--n", type=int, default=400)
     ap.add_argument("--threads", type=int, default=4)
     ap.add_argument("--strip", action="store_true", help="drop <|err|>/<|out|> blocks: what a plain zsh without output capture can provide")
