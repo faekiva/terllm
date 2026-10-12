@@ -1,0 +1,140 @@
+# Each probe: run `setup` (always bash, silent) then `cmd` in `cwd` (relative to ~) and record exit/stdout/stderr.
+# `params` values are replaced by {name} placeholders in the recorded text; {cwd}/{home} are implicit.
+# shells: any = bash non-interactive; both = bash and zsh interactive (shell-specific message formats).
+- {key: sh.not_found, shells: both, cmd: "rg foo", params: {cmd: rg}}
+- {key: cd.no_dir, shells: both, cmd: "cd nodir", params: {path: nodir}}
+- {key: cd.not_dir, shells: both, setup: "touch afile", cmd: "cd afile", params: {path: afile}}
+- {key: sh.exec_denied, shells: both, setup: "echo 'echo hi' > run.sh", cmd: "./run.sh", params: {path: ./run.sh}}
+- {key: sh.exec_nofile, shells: both, cmd: "./nope.sh", params: {path: ./nope.sh}}
+- {key: sh.exec_isdir, shells: both, setup: "mkdir adir", cmd: "./adir", params: {path: ./adir}}
+- {key: sh.redir_nodir, shells: both, cmd: "echo hi > nodir/out.txt", params: {path: nodir/out.txt}}
+- {key: sh.redir_denied, shells: both, cmd: "echo hi > /etc/hosts", params: {path: /etc/hosts}}
+- {key: source.no_file, shells: both, cmd: "source .venv/bin/activate", params: {path: .venv/bin/activate}}
+- {key: sh.nomatch, shells: [zsh], cmd: "ls *.zzz", params: {pattern: "*.zzz"}}
+- {key: sh.script_nofile, shells: any, cmd: "bash nope.sh", params: {path: nope.sh}}
+- {key: mkdir.exists, setup: "mkdir adir", cmd: "mkdir adir", params: {path: adir}}
+- {key: mkdir.no_parent, cmd: "mkdir aa/bb", params: {path: aa/bb}}
+- {key: mkdir.denied, cmd: "mkdir /opt/newdir", params: {path: /opt/newdir}}
+- {key: touch.denied, cmd: "touch /etc/newfile", params: {path: /etc/newfile}}
+- {key: touch.no_dir, cmd: "touch nodir/f.txt", params: {path: nodir/f.txt}}
+- {key: rm.no_file, cmd: "rm nope.txt", params: {path: nope.txt}}
+- {key: rm.is_dir, setup: "mkdir adir", cmd: "rm adir", params: {path: adir}}
+- {key: rm.denied, cmd: "rm /etc/hosts", params: {path: /etc/hosts}}
+- {key: rmdir.no_file, cmd: "rmdir nope", params: {path: nope}}
+- {key: rmdir.not_dir, setup: "touch afile", cmd: "rmdir afile", params: {path: afile}}
+- {key: rmdir.not_empty, setup: "mkdir adir; touch adir/x", cmd: "rmdir adir", params: {path: adir}}
+- {key: cp.no_file, cmd: "cp nope.txt other.txt", params: {path: nope.txt}}
+- {key: cp.omit_dir, setup: "mkdir adir", cmd: "cp adir bdir", params: {path: adir}}
+- {key: cp.denied, setup: "touch file.txt", cmd: "cp file.txt /usr/local/bin/", params: {target: /usr/local/bin/file.txt, src: file.txt}}
+- {key: cp.no_dir, setup: "touch file.txt", cmd: "cp file.txt nodir/file.txt", params: {path: nodir/file.txt}}
+- {key: mv.no_file, cmd: "mv nope.txt other.txt", params: {path: nope.txt}}
+- {key: mv.denied, setup: "touch file.txt", cmd: "mv file.txt /usr/local/bin/", params: {target: /usr/local/bin/file.txt, src: file.txt}}
+- {key: mv.no_dir, setup: "touch file.txt", cmd: "mv file.txt nodir/file.txt", params: {path: nodir/file.txt, src: file.txt}}
+- {key: cat.no_file, cmd: "cat nope.txt", params: {path: nope.txt}}
+- {key: cat.is_dir, setup: "mkdir adir", cmd: "cat adir", params: {path: adir}}
+- {key: ls.no_file, cmd: "ls nope", params: {path: nope}}
+- {key: chmod.no_file, cmd: "chmod +x nope.sh", params: {path: nope.sh}}
+- {key: chmod.denied, cmd: "chmod +x /etc/hosts", params: {path: /etc/hosts}}
+- {key: ln.exists, setup: "touch a b", cmd: "ln -s a b", params: {path: b}}
+- {key: grep.no_file, cmd: "grep foo nope.txt", params: {path: nope.txt}}
+- {key: tar.no_file, cmd: "tar xzf nope.tar.gz", params: {file: nope.tar.gz}}
+- {key: tar.not_gzip, setup: "echo this is not a gzip archive but plain text > plain.tar.gz", cmd: "tar xzf plain.tar.gz", params: {file: plain.tar.gz}}
+- {key: tar.not_tar, setup: "echo hi > plain.txt", cmd: "tar xf plain.txt", params: {file: plain.txt}}
+- {key: tar.no_such, cmd: "tar czf out.tgz nope", params: {path: nope}}
+- {key: unzip.no_file, cmd: "unzip nope.zip", params: {file: nope.zip}}
+- {key: unzip.not_zip, setup: "echo hi > bad.zip", cmd: "unzip bad.zip", params: {file: bad.zip}}
+- {key: zip.no_file, cmd: "zip -r out.zip nope", params: {path: nope, out: out.zip}}
+- {key: wget.dns, cmd: "wget http://example.com/file.tar.gz", params: {url: "http://example.com/file.tar.gz", host: example.com}}
+- {key: curl.dns, cmd: "curl -O http://example.com/file.tar.gz", params: {host: example.com}}
+- {key: python.no_file, cmd: "python3 nope.py", params: {path: /home/dev/nope.py, py: python3}}
+- {key: python.no_module, setup: "printf '# a\\n# b\\nimport requests\\n' > app.py", cmd: "python3 app.py", params: {file: /home/dev/app.py, lineno: "3", src: import requests, module: requests}}
+- {key: python.no_module_m, cmd: "python3 -m nomodx", params: {module: nomodx}}
+- {key: python.port_in_use, setup: "fx_port 8000", cmd: "python3 -m http.server 8000", params: {port: "8000"}}
+- {key: pip.external, cmd: "pip install flask"}
+- {key: pip.no_dist, setup: "python3 -m venv v; . v/bin/activate", cmd: "pip install nonexistentpkg", params: {pkg: nonexistentpkg}}
+- {key: pip.no_req, setup: "python3 -m venv v; . v/bin/activate", cmd: "pip install -r requirements.txt", params: {path: requirements.txt}}
+- {key: npm.missing_script, setup: "fx_project p node", cwd: p, cmd: "npm run nope", params: {script: nope}}
+- {key: npm.no_package_json, setup: "mkdir e", cwd: e, cmd: "npm install"}
+- {key: npm.run_no_package_json, setup: "mkdir e", cwd: e, cmd: "npm run build"}
+- {key: node.no_module, cmd: "node nope.js", params: {path: /home/dev/nope.js}}
+- {key: cargo.no_manifest, cmd: "cargo build"}
+- {key: cargo.exists, setup: "mkdir proj", cmd: "cargo new proj", params: {path: /home/dev/proj, name: proj}}
+- {key: make.no_makefile, cmd: "make"}
+- {key: make.no_rule, setup: "printf 'all:\\n\\techo hi\\n' > Makefile", cmd: "make nope", params: {target: nope}}
+- {key: make.no_rule_needed, setup: "printf 'main: main.c\\n\\tgcc -o main main.c\\n' > Makefile", cmd: "make", params: {target: main.c, parent: main}}
+- {key: cmake.no_source, cmd: "cmake -S . -B build", params: {src: /home/dev}}
+- {key: cmake.no_source_dot, cmd: "cmake .", params: {src: /home/dev}}
+- {key: cmake.no_source_up, setup: "mkdir b", cwd: b, cmd: "cmake ..", params: {src: /home/dev}}
+- {key: cmake.build_nodir, cmd: "cmake --build nodir", params: {dir: /home/dev/nodir}}
+- {key: cmake.build_nocache, setup: "mkdir b", cmd: "cmake --build b", params: {dir: /home/dev/b}}
+- {key: gcc.no_file, cmd: "gcc nope.c -o out", params: {file: nope.c}}
+- {key: gcc.no_input, cmd: "gcc"}
+# ---- git
+- {key: git.not_repo, cmd: "git status"}
+- {key: git.clone.exists, setup: "fx_remote u/rr docs; mkdir rr; touch rr/x", cmd: "git clone https://github.com/u/rr", params: {dir: rr}}
+- {key: git.add.nomatch, setup: "fx_project r docs git", cwd: r, cmd: "git add nope.txt", params: {path: nope.txt}}
+- {key: git.checkout.nomatch, setup: "fx_project r docs git", cwd: r, cmd: "git checkout nope", params: {name: nope}}
+- {key: git.checkout.dirty, setup: "fx_project r docs git; cd r; git checkout -qb feat; echo y > README.md; git commit -qam c; git checkout -q main; echo x > README.md", cwd: r, cmd: "git checkout feat", params: {files: README.md}}
+- {key: git.switch.invalid, setup: "fx_project r docs git", cwd: r, cmd: "git switch nope", params: {name: nope}}
+- {key: git.branch.exists, setup: "fx_project r docs git", cwd: r, cmd: "git checkout -b main", params: {name: main}}
+- {key: git.branch.notfound, setup: "fx_project r docs git", cwd: r, cmd: "git branch -d nope", params: {name: nope}}
+- {key: git.branch.delete_current, setup: "fx_project r docs git", cwd: r, cmd: "git branch -d main", params: {name: main, path: /home/dev/r}}
+- {key: git.branch.nocommit, setup: "git init -q r", cwd: r, cmd: "git branch newb", params: {head: main}}
+- {key: git.branch.badupstream, setup: "fx_project r docs git", cwd: r, cmd: "git branch --set-upstream-to=origin/nope", params: {name: origin/nope}}
+- {key: git.remote.exists, setup: "fx_remote u/r2 docs; fx_project r docs git; cd r; git remote add origin https://github.com/u/r2", cwd: r, cmd: "git remote add origin https://github.com/u/other", params: {name: origin}}
+- {key: git.remote.nosuch, setup: "fx_project r docs git", cwd: r, cmd: "git remote remove nope", params: {name: nope}}
+- {key: git.remote.missing, setup: "fx_project r docs git", cwd: r, cmd: "git push nope main", params: {remote: nope}}
+- {key: git.fetch.noremote, setup: "fx_project r docs git", cwd: r, cmd: "git fetch"}
+- {key: git.push.no_remote, setup: "fx_project r docs git", cwd: r, cmd: "git push"}
+- {key: git.push.no_upstream, setup: "fx_remote u/r3 docs; git clone -q https://github.com/u/r3 r; cd r; git checkout -qb feature; echo x >> README.md; git commit -qam x", cwd: r, cmd: "git push", params: {branch: feature}}
+- {key: git.push.nosrc, setup: "fx_remote u/r4 docs; git init -q r; cd r; git remote add origin https://github.com/u/r4.git", cwd: r, cmd: "git push origin main", params: {branch: main, url: /srv/git/u/r4.git}}
+- {key: git.push.rejected, setup: "fx_remote u/r5 docs; git clone -q https://github.com/u/r5 a; git clone -q https://github.com/u/r5 b; cd b; echo b >> README.md; git commit -qam b; git push -q; cd ../a; echo a >> README.md; git commit -qam a", cwd: a, cmd: "git push", params: {branch: main, url: /srv/git/u/r5.git}}
+- {key: git.pull.no_tracking, setup: "fx_remote u/r6 docs; git clone -q https://github.com/u/r6 r; cd r; git checkout -qb feature", cwd: r, cmd: "git pull", params: {branch: feature}}
+- {key: git.pull.no_remote, setup: "fx_project r docs git", cwd: r, cmd: "git pull", params: {branch: main}}
+- {key: git.pull.noref, setup: "fx_remote u/r7 docs; git clone -q https://github.com/u/r7 r", cwd: r, cmd: "git pull origin nope", params: {branch: nope}}
+- {key: git.merge.unknown, setup: "fx_project r docs git", cwd: r, cmd: "git merge nope", params: {name: nope}}
+- {key: git.merge.noabort, setup: "fx_project r docs git", cwd: r, cmd: "git merge --abort"}
+- {key: git.merge.conflict, setup: "fx_project r docs git; cd r; echo base > conf.txt; git add .; git commit -qm base; git checkout -qb feat; echo theirs > conf.txt; git commit -qam t; git checkout -q main; echo ours > conf.txt; git commit -qam o", cwd: r, cmd: "git merge feat", params: {file: conf.txt}}
+- {key: git.commit.unmerged, setup: "fx_project r docs git; cd r; echo base > conf.txt; git add .; git commit -qm base; git checkout -qb feat; echo theirs > conf.txt; git commit -qam t; git checkout -q main; echo ours > conf.txt; git commit -qam o; git merge feat", cwd: r, cmd: "git commit -m x", params: {files: "U\tconf.txt"}}
+- {key: git.stash.empty, setup: "fx_project r docs git", cwd: r, cmd: "git stash pop"}
+- {key: git.log.nocommits, setup: "git init -q r", cwd: r, cmd: "git log", params: {branch: main}}
+- {key: git.rm.nomatch, setup: "fx_project r docs git", cwd: r, cmd: "git rm nope.txt", params: {path: nope.txt}}
+- {key: git.mv.untracked, setup: "fx_project r docs git; cd r; touch newfile", cwd: r, cmd: "git mv newfile moved", params: {path: newfile, dest: moved}}
+- {key: git.tag.notfound, setup: "fx_project r docs git", cwd: r, cmd: "git tag -d nope", params: {name: nope}}
+- {key: git.tag.exists, setup: "fx_project r docs git; cd r; git tag v1", cwd: r, cmd: "git tag v1", params: {name: v1}}
+- {key: git.reset.badrev, setup: "fx_project r docs git", cwd: r, cmd: "git reset --hard HEAD~5", params: {name: HEAD~5}}
+# git typos
+- {key: git.typo.stauts, setup: "fx_project r docs git", cwd: r, cmd: "git stauts", params: {cmd: stauts}}
+- {key: git.typo.staus, setup: "fx_project r docs git", cwd: r, cmd: "git staus", params: {cmd: staus}}
+- {key: git.typo.statu, setup: "fx_project r docs git", cwd: r, cmd: "git statu", params: {cmd: statu}}
+- {key: git.typo.stats, setup: "fx_project r docs git", cwd: r, cmd: "git stats", params: {cmd: stats}}
+- {key: git.typo.comit, setup: "fx_project r docs git", cwd: r, cmd: "git comit", params: {cmd: comit}}
+- {key: git.typo.commmit, setup: "fx_project r docs git", cwd: r, cmd: "git commmit", params: {cmd: commmit}}
+- {key: git.typo.comitt, setup: "fx_project r docs git", cwd: r, cmd: "git comitt", params: {cmd: comitt}}
+- {key: git.typo.psuh, setup: "fx_project r docs git", cwd: r, cmd: "git psuh", params: {cmd: psuh}}
+- {key: git.typo.puhs, setup: "fx_project r docs git", cwd: r, cmd: "git puhs", params: {cmd: puhs}}
+- {key: git.typo.pul, setup: "fx_project r docs git", cwd: r, cmd: "git pul", params: {cmd: pul}}
+- {key: git.typo.pll, setup: "fx_project r docs git", cwd: r, cmd: "git pll", params: {cmd: pll}}
+- {key: git.typo.chekout, setup: "fx_project r docs git", cwd: r, cmd: "git chekout", params: {cmd: chekout}}
+- {key: git.typo.checkou, setup: "fx_project r docs git", cwd: r, cmd: "git checkou", params: {cmd: checkou}}
+- {key: git.typo.chckout, setup: "fx_project r docs git", cwd: r, cmd: "git chckout", params: {cmd: chckout}}
+- {key: git.typo.brach, setup: "fx_project r docs git", cwd: r, cmd: "git brach", params: {cmd: brach}}
+- {key: git.typo.brnach, setup: "fx_project r docs git", cwd: r, cmd: "git brnach", params: {cmd: brnach}}
+- {key: git.typo.banch, setup: "fx_project r docs git", cwd: r, cmd: "git banch", params: {cmd: banch}}
+- {key: git.typo.fecth, setup: "fx_project r docs git", cwd: r, cmd: "git fecth", params: {cmd: fecth}}
+- {key: git.typo.fetc, setup: "fx_project r docs git", cwd: r, cmd: "git fetc", params: {cmd: fetc}}
+- {key: git.typo.mege, setup: "fx_project r docs git", cwd: r, cmd: "git mege", params: {cmd: mege}}
+- {key: git.typo.merg, setup: "fx_project r docs git", cwd: r, cmd: "git merg", params: {cmd: merg}}
+- {key: git.typo.lgo, setup: "fx_project r docs git", cwd: r, cmd: "git lgo", params: {cmd: lgo}}
+- {key: git.typo.dif, setup: "fx_project r docs git", cwd: r, cmd: "git dif", params: {cmd: dif}}
+- {key: git.typo.ad, setup: "fx_project r docs git", cwd: r, cmd: "git ad", params: {cmd: ad}}
+- {key: git.typo.stsh, setup: "fx_project r docs git", cwd: r, cmd: "git stsh", params: {cmd: stsh}}
+- {key: git.typo.remot, setup: "fx_project r docs git", cwd: r, cmd: "git remot", params: {cmd: remot}}
+- {key: git.typo.clon, setup: "fx_project r docs git", cwd: r, cmd: "git clon", params: {cmd: clon}}
+- {key: git.typo.cloen, setup: "fx_project r docs git", cwd: r, cmd: "git cloen", params: {cmd: cloen}}
+- {key: git.typo.rset, setup: "fx_project r docs git", cwd: r, cmd: "git rset", params: {cmd: rset}}
+- {key: git.typo.restor, setup: "fx_project r docs git", cwd: r, cmd: "git restor", params: {cmd: restor}}
+- {key: git.typo.swich, setup: "fx_project r docs git", cwd: r, cmd: "git swich", params: {cmd: swich}}
+- {key: git.typo.switc, setup: "fx_project r docs git", cwd: r, cmd: "git switc", params: {cmd: switc}}
+- {key: git.typo.tga, setup: "fx_project r docs git", cwd: r, cmd: "git tga", params: {cmd: tga}}
+- {key: git.typo.pushh, setup: "fx_project r docs git", cwd: r, cmd: "git pushh", params: {cmd: pushh}}

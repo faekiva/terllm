@@ -1,0 +1,125 @@
+"""Scenario YAML -> concrete sessions, executed in the simulator (the simulator supplies exit codes, stderr and state)."""
+import hashlib
+import json
+import pathlib
+import random
+import re
+
+import yaml
+
+from sim.errors import Unsupported
+from sim.shell import Sim
+from wordlists import base_dir, draw, pick
+
+ROOT = pathlib.Path(__file__).resolve().parent
+SCEN = ROOT / "scenarios"
+CLASSES = ["created_use", "chained", "error_fix", "state_action", "routine", "nav_noise", "t2c"]
+MAX_OUT, MAX_ERR = 1000, 1500
+
+
+class Discard(Exception):
+    pass
+
+
+def load_templates(path=SCEN):
+    """-> {template_id: spec} with variants flattened."""
+    out = {}
+    for f in sorted(pathlib.Path(path).rglob("*.yaml")):
+        docs = yaml.safe_load(f.read_text())
+        for t in docs if isinstance(docs, list) else [docs]:
+            variants = {None: {}, **(t.pop("variants", None) or {})}
+            for vname, ov in variants.items():
+                spec = {**t, **{k: v for k, v in ov.items() if k != "vars"}}
+                spec["vars"] = {**t.get("vars", {}), **ov.get("vars", {})}
+                tid = t["id"] + (f"/{vname}" if vname else "")
+                spec["template_id"] = tid
+                out[tid] = spec
+    return out
+
+
+def fmt(s, v):
+    return s.format(**v) if isinstance(s, str) else s
+
+
+def noise_pool(sim):
+    names = [n for n in sim.fs.listdir(sim.cwd)]
+    pool = ["ls", "ls", "ls -la", "ls -a", "pwd", "clear"]
+    root, repo = __import__("sim.git", fromlist=["x"]).find_repo(sim)
+    if repo:
+        pool += ["git status", "git status", "git branch"]
+        if repo.head_id():
+            pool.append("git log --oneline -3")
+    pool += [f"cat {n}" for n in names if n in ("README.md", "requirements.txt", "Makefile", "package.json", "main.c", "app.py") or n.endswith((".txt", ".md"))][:2]
+    return pool
+
+
+def run_step(sim, cmd, target, expect=None):
+    pre = sim.snapshot()
+    try:
+        res = sim.run(cmd)
+    except Unsupported as e:
+        raise Discard(f"unsupported:{e}")
+    if res.long:
+        res.code = 130
+    if expect == "any":
+        pass
+    elif expect == "fail" and res.code == 0:
+        raise Discard(f"expected failure: {cmd}")
+    elif expect in (None, "ok") and res.code != 0:
+        raise Discard(f"unexpected failure({res.code}): {cmd}")
+    elif expect == "fail" and res.code == 130:
+        raise Discard(f"interrupted, not failed: {cmd}")
+    rec = {**pre, "cmd": cmd, "exit": res.code, "stderr": res.err[:MAX_ERR], "stdout": res.out[:MAX_OUT], "target": target, "v": res.v}
+    if res.long:
+        rec["long"] = True
+    return rec
+
+
+def build_session(spec, seed):
+    r = random.Random(seed)
+    v = {"base": base_dir(r)}
+    for name, vs in spec.get("vars", {}).items():
+        v[name] = fmt(vs["fmt"], v) if "fmt" in vs else draw(r, vs)
+    shell = pick(r, spec.get("shell", ["bash", "zsh"]))
+    sim = Sim(shell)
+    setup = [f"mkdir -p {v['base']} && cd {v['base']}"] + [fmt(s, v) for s in spec.get("setup", [])]
+    for line in setup:
+        try:
+            res = sim.run(line)
+        except Unsupported as e:
+            raise Discard(f"setup unsupported:{e}")
+        if res.code != 0:
+            raise Discard(f"setup failed: {line}: {res.err[:80]}")
+    steps, nl = [], None
+    noise = spec.get("noise", {"before": [0, 2], "between": 0.12})
+    if noise:
+        for _ in range(r.randint(*noise.get("before", [0, 2]))):
+            steps.append(run_step(sim, pick(r, noise_pool(sim)), False, expect="any"))
+    for i, st in enumerate(spec["steps"]):
+        cmd = fmt(st["cmd"], v)
+        tgt = bool(st.get("target"))
+        rec = run_step(sim, cmd, tgt, st.get("expect"))
+        if "nl" in st:
+            rec["nl"] = fmt(pick(r, st["nl"]), v)
+            nl = nl or rec["nl"]
+        steps.append(rec)
+        if noise and i < len(spec["steps"]) - 1 and rec["exit"] == 0 and r.random() < noise.get("between", 0.12) and not st.get("no_noise_after"):
+            steps.append(run_step(sim, pick(r, noise_pool(sim)), False, expect="any"))
+    if not any(s["target"] for s in steps):
+        raise Discard("no target step")
+    steps = [{k: s[k] for k in s} for s in steps]
+    sid = hashlib.blake2b(json.dumps([shell, setup, [s["cmd"] for s in steps]]).encode(), digest_size=8).hexdigest()
+    out = {"id": f"s-{sid}", "class": spec["class"], "source": "seed", "template_id": spec["template_id"], "shell": shell, "setup": setup, "steps": steps}
+    if nl:
+        out["nl"] = nl
+    return out
+
+
+def make(spec, seed, tries=8):
+    last = None
+    for k in range(tries):
+        try:
+            return build_session(spec, seed * 1000 + k), None
+        except Discard as e:
+            last = str(e)
+    return None, last

@@ -1,0 +1,33 @@
+- id: created_use.mkdir_cd
+  class: created_use
+  vars: {d: {gen: project}}
+  steps:
+    - {cmd: "mkdir {d}"}
+    - {cmd: "cd {d}", target: true}
+  variants:
+    p: {steps: [{cmd: "mkdir -p {d}/src"}, {cmd: "cd {d}", target: true}]}
+    deep: {vars: {d2: {gen: word}}, steps: [{cmd: "mkdir -p {d}/{d2}"}, {cmd: "cd {d}/{d2}", target: true}]}
+- id: created_use.clone_cd
+  class: created_use
+  vars: {u: {gen: user}, rp: {gen: project}, lang: {choice: [python, node, c, rust]}}
+  setup: ["fx_remote {u}/{rp} {lang}"]
+  steps:
+    - {cmd: "git clone https://github.com/{u}/{rp}"}
+    - {cmd: "cd {rp}", target: true}
+  variants:
+    ssh: {steps: [{cmd: "git clone git@github.com:{u}/{rp}.git"}, {cmd: "cd {rp}", target: true}]}
+    named: {vars: {nm: {gen: word}}, steps: [{cmd: "git clone https://github.com/{u}/{rp}.git {nm}"}, {cmd: "cd {nm}", target: true}]}
+- id: created_use.touch_edit
+  class: created_use
+  vars: {f: {gen: file_py}}
+  steps:
+    - {cmd: "touch {f}"}
+    - {cmd: "python {f}", target: true}
+- id: created_use.wget_extract_cd
+  class: chained
+  vars: {n: {gen: word}, ver: {gen: version}, lang: {choice: [c, node, python]}}
+  setup: ["fx_archive {n}-{ver}.tar.gz {lang}"]
+  steps:
+    - {cmd: "wget https://example.org/dl/{n}-{ver}.tar.gz"}
+    - {cmd: "tar xzf {n}-{ver}.tar.gz", target: true}
+    - {cmd: "cd {n}-{ver}", target: true}

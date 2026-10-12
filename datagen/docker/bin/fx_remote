@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+"""fx_remote USER/REPO [LANG] [BRANCH...] -> bare repo /srv/git/USER/REPO.git (setup helper)."""
+import os, subprocess, sys, tempfile
+sys.path.insert(0, "/opt/terllm")
+from fixtures import project_files
+
+slug, lang, branches = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "docs"), sys.argv[3:]
+name = slug.split("/")[-1]
+g = lambda *a, cwd: subprocess.run(["git", *a], cwd=cwd, check=True, capture_output=True)
+with tempfile.TemporaryDirectory() as t:
+    for p, c in project_files(lang, name).items():
+        os.makedirs(os.path.dirname(os.path.join(t, p)) or t, exist_ok=True)
+        open(os.path.join(t, p), "w").write(c)
+    g("init", "-q", "-b", "main", cwd=t); g("add", "-A", cwd=t); g("commit", "-qm", "Initial commit", cwd=t)
+    for b in branches:
+        g("checkout", "-q", "-b", b, cwd=t); open(os.path.join(t, b.replace("/", "_") + ".txt"), "w").write(b + "\n")
+        g("add", "-A", cwd=t); g("commit", "-qm", f"Add {b}", cwd=t)
+    dest = f"/srv/git/{slug}.git"
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    g("clone", "-q", "--bare", t, dest, cwd="/")
+    g("symbolic-ref", "HEAD", "refs/heads/main", cwd=dest)

@@ -1,0 +1,4 @@
+#!/bin/sh
+# fx_port N -> something already listens on port N (kept alive until the container exits)
+nohup python3 -m http.server "$1" >/dev/null 2>&1 &
+sleep 0.5

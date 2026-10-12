@@ -1,0 +1,14 @@
+[user]
+	name = Dev User
+	email = dev@example.com
+[init]
+	defaultBranch = main
+[safe]
+	directory = *
+[pull]
+	rebase = false
+[url "/srv/git/"]
+	insteadOf = https://github.com/
+	insteadOf = git@github.com:
+	insteadOf = https://gitlab.com/
+	insteadOf = git@gitlab.com:
