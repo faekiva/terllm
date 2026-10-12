@@ -5,7 +5,7 @@ zmodload zsh/net/socket zsh/system 2>/dev/null || return
 autoload -Uz add-zle-hook-widget add-zsh-hook
 
 typeset -g _terllm_dir="${0:A:h}" _terllm_sock="${XDG_RUNTIME_DIR:-/tmp}/terllm.sock"
-typeset -g _terllm_fd _terllm_seq=0 _terllm_sugg="" _terllm_last="" _terllm_lastcmd=""
+typeset -g _terllm_fd _terllm_seq=0 _terllm_sugg="" _terllm_last="" _terllm_lastcmd="" _terllm_qbuf=""
 
 _terllm_connect() {
   [[ -n $_terllm_fd ]] && return 0
@@ -29,10 +29,16 @@ _terllm_precmd() {
   _terllm_lastcmd=""
 }
 
-_terllm_show() {                                # draw `$1` as grey ghost text after the cursor
-  _terllm_sugg=$1
-  POSTDISPLAY=$1
-  region_highlight=("${#BUFFER} $(( ${#BUFFER} + ${#POSTDISPLAY} )) fg=8")
+_terllm_paint() {                               # the only place that touches POSTDISPLAY / highlight: ghost text = rest of last+sugg after BUFFER
+  local want=$_terllm_last$_terllm_sugg tail=""
+  region_highlight=("${(@)region_highlight:#*memo=terllm}")
+  if [[ -n $_terllm_sugg && $CURSOR -eq ${#BUFFER} && $want == "$BUFFER"* && $want != "$BUFFER" ]]; then
+    tail=${want#"$BUFFER"}
+    region_highlight+=("${#BUFFER} $(( ${#BUFFER} + ${#tail} )) fg=8,memo=terllm")
+  else
+    _terllm_sugg=""
+  fi
+  POSTDISPLAY=$tail
 }
 
 _terllm_reply() {                               # zle -F handler: a line arrived from the daemon
@@ -46,29 +52,29 @@ _terllm_reply() {                               # zle -F handler: a line arrived
 _terllm_apply() {
   local -a f
   f=("${(@ps:\t:)1}")
-  [[ $f[1] == s && $f[2] == $_terllm_seq && $f[3] == $BUFFER && -n $f[4] ]] || return
-  _terllm_last=$BUFFER
-  _terllm_show $f[4]
+  [[ $f[1] == s && $f[2] == $_terllm_seq && $f[3] == $BUFFER && -n $f[4] ]] || return   # stale answers are dropped
+  _terllm_last=$BUFFER; _terllm_sugg=$f[4]
+  _terllm_paint
   zle -R
 }
 
-_terllm_redraw() {                              # runs on every buffer change
-  [[ $BUFFER == *$'\n'* ]] && { POSTDISPLAY=""; _terllm_sugg=""; return }
-  local want=$_terllm_last$_terllm_sugg
-  if [[ -n $_terllm_sugg && $want == ${BUFFER}* ]]; then   # still typing along the suggestion: no model call
-    _terllm_show ${want#$BUFFER}
-    return
-  fi
-  POSTDISPLAY=""; _terllm_sugg=""
-  [[ -n $_terllm_fd ]] || return
+_terllm_redraw() {                              # line-pre-redraw: runs on every redraw
+  [[ $BUFFER == *$'\n'* ]] && { _terllm_sugg=""; _terllm_paint; return }
+  _terllm_paint
+  [[ -n $_terllm_sugg ]] && return              # still typing along the suggestion: no model call
+  [[ -n $_terllm_fd && $CURSOR -eq ${#BUFFER} && $BUFFER != $_terllm_qbuf ]] || return
+  _terllm_qbuf=$BUFFER
   (( _terllm_seq++ ))
   _terllm_send "q"$'\t'"$_terllm_seq"$'\t'"$BUFFER"
 }
 
+_terllm_init() { _terllm_qbuf=$'\x01'; _terllm_last=""; _terllm_sugg="" }   # new prompt: ask again, also for the empty line
+_terllm_finish() { _terllm_last=""; _terllm_sugg=""; _terllm_paint }       # accepted line: leave no ghost text in the scrollback
+
 _terllm_accept() {
   if [[ -n $_terllm_sugg && $CURSOR -eq ${#BUFFER} ]]; then
     BUFFER+=$_terllm_sugg; CURSOR=${#BUFFER}; _terllm_send "a"
-    POSTDISPLAY=""; _terllm_sugg=""; _terllm_last=""
+    _terllm_last=""; _terllm_sugg=""; _terllm_paint
   else
     zle ${1:-forward-char}
   fi
@@ -79,5 +85,8 @@ _terllm_accept_end() { _terllm_accept end-of-line }
 zle -N _terllm_apply; zle -N _terllm_accept_right; zle -N _terllm_accept_end
 bindkey '^[[C' _terllm_accept_right '^[OC' _terllm_accept_right '^[[F' _terllm_accept_end '^[OF' _terllm_accept_end
 add-zle-hook-widget line-pre-redraw _terllm_redraw
+add-zle-hook-widget line-init _terllm_init
+add-zle-hook-widget line-finish _terllm_finish
+(( $+functions[_zsh_autosuggest_start] )) && typeset -g _ZSH_AUTOSUGGEST_DISABLED=1   # zsh-autosuggestions also draws in POSTDISPLAY: terllm takes over
 add-zsh-hook preexec _terllm_preexec
 add-zsh-hook precmd _terllm_precmd
