@@ -1,0 +1,126 @@
+- id: t2c.cd_cloned
+  class: t2c
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} python"]
+  steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}", target: true, nl: ["go into the repo I just cloned", "enter the cloned directory", "cd into the project", "move into the new repo"]}]
+- id: t2c.cd_made
+  class: t2c
+  vars: {d: {gen: project}}
+  steps: [{cmd: "mkdir {d}"}, {cmd: "cd {d}", target: true, nl: ["go into the folder I just created", "enter the new directory", "change to the directory I just made"]}]
+- id: t2c.nav
+  class: t2c
+  vars: {a: {gen: word}}
+  setup: ["mkdir -p {a}/sub", "cd {a}/sub"]
+  steps: [{cmd: "pwd"}, {cmd: "cd ..", target: true, nl: ["go up one directory", "go to the parent folder", "move up a level"]}]
+  variants:
+    prev: {setup: ["mkdir -p {a}", "cd {a}", "cd .."], steps: [{cmd: "ls"}, {cmd: "cd -", target: true, nl: ["go back to the previous directory", "return to where I was before", "switch to the last directory"]}]}
+    home: {setup: ["mkdir -p {a}", "cd {a}"], steps: [{cmd: "pwd"}, {cmd: "cd ~", target: true, nl: ["go to my home directory", "change to home", "take me home"]}]}
+- id: t2c.ls_variants
+  class: t2c
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python", "cd {d}"]
+  steps: [{cmd: "ls"}, {cmd: "ls -a", target: true, nl: ["show hidden files", "list all files including dotfiles", "list everything including hidden files"]}]
+  variants:
+    long: {steps: [{cmd: "ls"}, {cmd: "ls -lh", target: true, nl: ["list files with human readable sizes", "show file sizes in a readable format", "long listing with sizes"]}]}
+    la: {steps: [{cmd: "ls"}, {cmd: "ls -la", target: true, nl: ["long listing of all files", "show all files with details", "detailed list including hidden files"]}]}
+    tests: {steps: [{cmd: "ls"}, {cmd: "ls tests", target: true, nl: ["list what is in the tests folder", "show the tests directory contents", "what's in tests"]}]}
+- id: t2c.py_setup
+  class: t2c
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python", "cd {d}"]
+  steps: [{cmd: "ls"}, {cmd: "python3 -m venv .venv", target: true, nl: ["create a python virtual environment", "make a venv in this folder", "set up a virtualenv called .venv"]}]
+  variants:
+    act: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv"], steps: [{cmd: "ls -a"}, {cmd: "source .venv/bin/activate", target: true, nl: ["activate the virtual environment", "activate the venv", "turn on the virtualenv"]}]}
+    install: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate"], steps: [{cmd: "ls"}, {cmd: "pip install -r requirements.txt", target: true, nl: ["install the python dependencies", "install the requirements", "install packages from requirements.txt"]}]}
+    run: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate", "pip install -r requirements.txt"], steps: [{cmd: "ls"}, {cmd: "python app.py", target: true, nl: ["run the app", "run the python script", "execute app.py"]}]}
+    deact: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate"], steps: [{cmd: "pwd"}, {cmd: "deactivate", target: true, nl: ["leave the virtual environment", "deactivate the venv", "exit the virtualenv"]}]}
+    freeze: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate", "pip install flask"], steps: [{cmd: "pip list"}, {cmd: "pip freeze > requirements.txt", target: true, nl: ["save the installed packages to requirements.txt", "write the dependencies to requirements.txt", "freeze the requirements into a file"]}]}
+    pkg: {vars: {p: {gen: pip}}, setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate"], steps: [{cmd: "ls"}, {cmd: "pip install {p}", target: true, nl: ["install {p}", "add {p} to this environment", "pip install the {p} package"]}]}
+- id: t2c.node
+  class: t2c
+  vars: {d: {gen: project}, p: {gen: npm}}
+  setup: ["fx_project {d} node", "cd {d}"]
+  steps: [{cmd: "ls"}, {cmd: "npm install", target: true, nl: ["install node dependencies", "install the npm packages", "install the project dependencies"]}]
+  variants:
+    build: {setup: ["fx_project {d} node", "cd {d}", "npm install"], steps: [{cmd: "ls"}, {cmd: "npm run build", target: true, nl: ["build the project", "run the build script", "compile the frontend"]}]}
+    test: {setup: ["fx_project {d} node", "cd {d}", "npm install"], steps: [{cmd: "ls"}, {cmd: "npm test", target: true, nl: ["run the tests", "run the test suite", "execute the node tests"]}]}
+    add: {setup: ["fx_project {d} node", "cd {d}", "npm install"], steps: [{cmd: "ls"}, {cmd: "npm install {p}", target: true, nl: ["add {p} as a dependency", "install {p}", "npm install the {p} package"]}]}
+    dev: {setup: ["fx_project {d} node", "cd {d}", "npm install"], steps: [{cmd: "ls"}, {cmd: "npm install -D {p}", target: true, nl: ["install {p} as a dev dependency", "add {p} to devDependencies"]}]}
+    init: {setup: ["mkdir {d}", "cd {d}"], steps: [{cmd: "ls"}, {cmd: "npm init -y", target: true, nl: ["initialize a node project", "create a package.json with defaults", "start a new npm project"]}]}
+    start: {setup: ["fx_project {d} node", "cd {d}", "npm install"], steps: [{cmd: "ls"}, {cmd: "npm start", target: true, nl: ["start the app", "run the start script", "launch the project"]}]}
+- id: t2c.build
+  class: t2c
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} c", "cd {d}"]
+  steps: [{cmd: "ls"}, {cmd: "make", target: true, nl: ["build the project", "compile it with make", "run make"]}]
+  variants:
+    run: {setup: ["fx_project {d} c", "cd {d}", "make"], steps: [{cmd: "ls"}, {cmd: "./main", target: true, nl: ["run the compiled program", "execute the binary", "run main"]}]}
+    clean: {setup: ["fx_project {d} c", "cd {d}", "make"], steps: [{cmd: "ls"}, {cmd: "make clean", target: true, nl: ["remove the build artifacts", "clean the build", "delete compiled files with make"]}]}
+    gcc: {steps: [{cmd: "ls"}, {cmd: "gcc -o main main.c", target: true, nl: ["compile main.c into an executable called main", "build main.c with gcc", "compile the c file"]}]}
+    cmake: {setup: ["fx_project {d} cmake", "cd {d}"], steps: [{cmd: "ls"}, {cmd: "cmake -B build", target: true, nl: ["configure the cmake project in a build folder", "generate the build files with cmake", "set up a cmake build directory"]}]}
+    cmakeb: {setup: ["fx_project {d} cmake", "cd {d}", "cmake -B build"], steps: [{cmd: "ls"}, {cmd: "cmake --build build", target: true, nl: ["build the cmake project", "compile using the build directory", "run the cmake build"]}]}
+    cargo: {setup: ["fx_project {d} rust", "cd {d}"], steps: [{cmd: "ls"}, {cmd: "cargo build", target: true, nl: ["build the rust project", "compile with cargo", "cargo build it"]}]}
+    cargorun: {setup: ["fx_project {d} rust", "cd {d}"], steps: [{cmd: "ls"}, {cmd: "cargo run", target: true, nl: ["run the rust program", "build and run with cargo", "execute the cargo project"]}]}
+    cargotest: {setup: ["fx_project {d} rust", "cd {d}"], steps: [{cmd: "ls"}, {cmd: "cargo test", target: true, nl: ["run the rust tests", "test the crate", "execute cargo tests"]}]}
+- id: t2c.git_basic
+  class: t2c
+  vars: {d: {gen: project}, m: {gen: msg}, f: {choice: [README.md, app.py]}}
+  setup: ["fx_project {d} python git", "cd {d}", "echo '# edit' >> {f}"]
+  steps: [{cmd: "ls"}, {cmd: "git status", target: true, nl: ["show what changed", "what files have I modified", "show the repo status", "check for uncommitted changes"]}]
+  variants:
+    add: {steps: [{cmd: "git status -s"}, {cmd: "git add -A", target: true, nl: ["stage everything", "add all changes", "stage all my changes"]}]}
+    addf: {steps: [{cmd: "git status -s"}, {cmd: "git add {f}", target: true, nl: ["stage {f}", "add {f} to the next commit", "git add just {f}"]}]}
+    commit: {steps: [{cmd: "git status -s"}, {cmd: "git commit -am \"{m}\"", target: true, nl: ["commit all changes with the message \"{m}\"", "commit everything saying \"{m}\"", "commit tracked changes with message {m}"]}]}
+    diff: {steps: [{cmd: "git status -s"}, {cmd: "git diff", target: true, nl: ["show the diff of my changes", "show line by line changes", "what exactly changed in the files"]}]}
+    restore: {steps: [{cmd: "git status -s"}, {cmd: "git restore {f}", target: true, nl: ["discard my changes in {f}", "revert {f} to the last commit", "undo the edits to {f}"]}]}
+    stash: {steps: [{cmd: "git status -s"}, {cmd: "git stash", target: true, nl: ["stash my changes", "shelve my work in progress", "put my changes aside temporarily"]}]}
+    log: {steps: [{cmd: "ls"}, {cmd: "git log --oneline -5", target: true, nl: ["show the last 5 commits", "list the latest five commits briefly", "short log of recent commits"]}]}
+    branch: {steps: [{cmd: "ls"}, {cmd: "git branch --show-current", target: true, nl: ["which branch am I on", "show the current branch name", "print the name of the current branch"]}]}
+    branches: {steps: [{cmd: "ls"}, {cmd: "git branch", target: true, nl: ["list local branches", "show all branches", "what branches do I have"]}]}
+- id: t2c.git_branching
+  class: t2c
+  vars: {u: {gen: user}, rp: {gen: project}, br: {gen: branch}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git status"}, {cmd: "git checkout -b {br}", target: true, nl: ["create a branch called {br} and switch to it", "new branch {br}", "make and checkout a branch named {br}", "start a new branch {br}"]}]
+  variants:
+    push: {setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "git checkout -q -b {br}", "echo x >> README.md", "git commit -q -am wip"], steps: [{cmd: "git status"}, {cmd: "git push -u origin {br}", target: true, nl: ["push this branch and set the upstream", "publish my branch to origin", "push the new branch to the remote and track it"]}]}
+    undo: {setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo x >> README.md", "git commit -q -am wip"], steps: [{cmd: "git log --oneline"}, {cmd: "git reset --soft HEAD~1", target: true, nl: ["undo the last commit but keep my changes staged", "uncommit the last commit and keep the changes", "reset back one commit without losing work"]}]}
+    del: {setup: ["fx_remote {u}/{rp} node {br}", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "git checkout -q {br}", "git checkout -q main"], steps: [{cmd: "git branch"}, {cmd: "git branch -d {br}", target: true, nl: ["delete the local branch {br}", "remove branch {br}", "delete {br} branch"]}]}
+    switch: {setup: ["fx_remote {u}/{rp} node {br}", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"], steps: [{cmd: "git branch -a"}, {cmd: "git checkout {br}", target: true, nl: ["switch to the {br} branch", "check out {br}", "go to branch {br}"]}]}
+    pull: {steps: [{cmd: "git status"}, {cmd: "git pull", target: true, nl: ["get the latest changes from the remote", "pull updates", "update my local copy"]}]}
+    remote: {steps: [{cmd: "git status"}, {cmd: "git remote -v", target: true, nl: ["show the remote urls", "which remotes are configured", "list remotes with their urls"]}]}
+- id: t2c.files
+  class: t2c
+  vars: {f: {gen: file_txt}, g: {gen: file_txt}, d: {gen: word}}
+  setup: ["echo hello > {f}", "mkdir {d}"]
+  steps: [{cmd: "ls"}, {cmd: "cat {f}", target: true, nl: ["show the contents of {f}", "print {f}", "display what's in {f}"]}]
+  variants:
+    cp: {steps: [{cmd: "ls"}, {cmd: "cp {f} {f}.bak", target: true, nl: ["make a backup copy of {f}", "copy {f} to {f}.bak", "back up {f}"]}]}
+    mv: {steps: [{cmd: "ls"}, {cmd: "mv {f} {g}", target: true, nl: ["rename {f} to {g}", "move {f} to {g}", "change the name of {f} to {g}"]}]}
+    mvd: {steps: [{cmd: "ls"}, {cmd: "mv {f} {d}/", target: true, nl: ["move {f} into {d}", "put {f} in the {d} folder", "move the file into {d}"]}]}
+    rm: {steps: [{cmd: "ls"}, {cmd: "rm {f}", target: true, nl: ["delete {f}", "remove the file {f}", "get rid of {f}"]}]}
+    rmd: {steps: [{cmd: "ls"}, {cmd: "rm -r {d}", target: true, nl: ["delete the {d} directory", "remove the folder {d} and its contents", "delete {d} recursively"]}]}
+    wc: {steps: [{cmd: "ls"}, {cmd: "wc -l {f}", target: true, nl: ["count the lines in {f}", "how many lines does {f} have", "line count of {f}"]}]}
+    head: {steps: [{cmd: "ls"}, {cmd: "head -n 5 {f}", target: true, nl: ["show the first 5 lines of {f}", "print the top five lines of {f}", "head of {f}"]}]}
+    tail: {steps: [{cmd: "ls"}, {cmd: "tail -n 5 {f}", target: true, nl: ["show the last 5 lines of {f}", "print the final five lines of {f}", "tail of {f}"]}]}
+    mkdir: {steps: [{cmd: "ls"}, {cmd: "mkdir {d}2", target: true, nl: ["create a folder named {d}2", "make a new directory called {d}2", "new dir {d}2"]}]}
+    touch: {steps: [{cmd: "ls"}, {cmd: "touch {g}", target: true, nl: ["create an empty file called {g}", "make a new empty file {g}", "touch {g}"]}]}
+    grep: {steps: [{cmd: "ls"}, {cmd: "grep hello {f}", target: true, nl: ["search for hello in {f}", "find lines containing hello in {f}", "grep hello in {f}"]}]}
+    grepr: {steps: [{cmd: "ls"}, {cmd: "grep -rn hello .", target: true, nl: ["search for hello in all files recursively", "find hello in every file here", "recursive grep for hello with line numbers"]}]}
+    find: {steps: [{cmd: "ls"}, {cmd: "find . -name \"*.txt\"", target: true, nl: ["find all txt files", "list every .txt file under here", "search for text files recursively"]}]}
+    chmod: {vars: {s: {gen: file_sh}}, setup: ["echo 'echo hi' > {s}"], steps: [{cmd: "ls"}, {cmd: "chmod +x {s}", target: true, nl: ["make {s} executable", "give {s} execute permission", "allow running {s}"]}]}
+- id: t2c.archive
+  class: t2c
+  vars: {d: {gen: project}, n: {gen: word}, ver: {gen: version}}
+  setup: ["fx_project {d} python"]
+  steps: [{cmd: "ls"}, {cmd: "tar czf {d}.tar.gz {d}", target: true, nl: ["compress the {d} folder into a tar.gz", "make a gzipped tarball of {d}", "archive {d} as {d}.tar.gz"]}]
+  variants:
+    zip: {steps: [{cmd: "ls"}, {cmd: "zip -r {d}.zip {d}", target: true, nl: ["zip up the {d} directory", "create a zip archive of {d}", "compress {d} into a zip file"]}]}
+    untar: {setup: ["fx_archive {n}-{ver}.tar.gz c", "cp /srv/dl/{n}-{ver}.tar.gz ."], steps: [{cmd: "ls"}, {cmd: "tar xzf {n}-{ver}.tar.gz", target: true, nl: ["extract the tarball", "unpack {n}-{ver}.tar.gz", "untar the archive in this folder"]}]}
+    unzip: {setup: ["fx_archive {n}-{ver}.zip c", "cp /srv/dl/{n}-{ver}.zip ."], steps: [{cmd: "ls"}, {cmd: "unzip {n}-{ver}.zip", target: true, nl: ["unzip the archive", "extract {n}-{ver}.zip", "decompress the zip file"]}]}
+    dl: {setup: ["fx_archive {n}-{ver}.tar.gz c"], steps: [{cmd: "pwd"}, {cmd: "wget https://example.org/dl/{n}-{ver}.tar.gz", target: true, nl: ["download https://example.org/dl/{n}-{ver}.tar.gz", "fetch that tarball with wget", "wget the {n} {ver} archive"]}]}
+- id: t2c.serve
+  class: t2c
+  vars: {p: {gen: port}, d: {gen: project}}
+  setup: ["fx_project {d} docs", "cd {d}"]
+  steps: [{cmd: "ls"}, {cmd: "python3 -m http.server {p}", target: true, expect: any, nl: ["serve this folder on port {p}", "start a simple web server on port {p}", "run a python http server on {p}"]}]

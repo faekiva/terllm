@@ -114,18 +114,25 @@ def main():
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--jobs", type=int, default=6)
     ap.add_argument("--templates", default="")
+    ap.add_argument("--shard", default="", help="replay a random sample of the (simulated) sessions stored in this shard instead of regenerating")
     ap.add_argument("--out", default=str(ROOT.parent / "data" / "validate" / "report.json"))
     a = ap.parse_args()
-    T = {k: v for k, v in S.load_templates().items() if a.templates in k}
     r = random.Random(a.seed)
-    tids = sorted(T)
     sessions = []
-    for i in range(a.n):
-        tid = tids[i % len(tids)] if a.n >= len(tids) else r.choice(tids)
-        s, err = S.make(T[tid], r.randrange(10**9))
-        if s:
-            sessions.append(s)
-    print(f"{len(sessions)} sessions from {len(tids)} templates")
+    if a.shard:
+        import render
+        pool = [s for s in render.read_shard(a.shard) if s["source"] == "seed"]
+        sessions = r.sample(pool, min(a.n, len(pool)))
+        print(f"{len(sessions)} sessions sampled from {a.shard} ({len({s['template_id'] for s in sessions})} templates)")
+    else:
+        T = {k: v for k, v in S.load_templates().items() if a.templates in k}
+        tids = sorted(T)
+        for i in range(a.n):
+            tid = tids[i % len(tids)] if a.n >= len(tids) else r.choice(tids)
+            s, err = S.make(T[tid], r.randrange(10**9))
+            if s:
+                sessions.append(s)
+        print(f"{len(sessions)} sessions from {len(tids)} templates")
     with ThreadPoolExecutor(a.jobs) as ex:
         results = list(ex.map(run_docker, sessions))
     n_steps = n_ok = n_sess_ok = n_excl = 0

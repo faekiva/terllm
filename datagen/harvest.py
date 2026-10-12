@@ -105,16 +105,20 @@ CARGO_SUBS = ["new", "init", "build", "run", "test", "check", "clean", "add", "f
 
 
 def harvest_flags():
-    jobs = [(p, [p, "--help"]) for p in FLAG_PROGS] + [(f"git {s}", ["git", s, "-h"]) for s in GIT_SUBS] \
+    jobs = [(p, [p, "--help"]) for p in FLAG_PROGS] + [(f"git {s}", ["git", s, "-h"]) for s in GIT_SUBS] + [(f"git {s}", ["git", s, "--git-completion-helper"]) for s in GIT_SUBS] \
         + [(f"npm {s}", ["npm", s, "--help"]) for s in NPM_SUBS] + [(f"cargo {s}", ["cargo", s, "--help"]) for s in CARGO_SUBS] \
         + [("pip install", ["pip", "install", "--help"]), ("python3 -m venv", ["python3", "-m", "venv", "--help"])]
-    script = "set +e\n" + "".join(f"printf '\\n@@PROG {name}\\n'; timeout 20 {' '.join(map(shlex.quote, argv))} 2>&1 </dev/null | head -400\n" for name, argv in jobs)
+    script = "set +e\ngit init -q /tmp/r; cd /tmp/r\n" + "".join(f"printf '\\n@@PROG {name}\\n'; timeout 20 {' '.join(map(shlex.quote, argv))} 2>&1 </dev/null | head -400\n" for name, argv in jobs)
+    script += "printf '\n@@PROG git (any)\n'; cat /usr/share/bash-completion/completions/git\n"
     raw = sandbox(script, timeout=600)
     flags = {}
     for chunk in raw.split("\n@@PROG ")[1:]:
         name, _, body = chunk.partition("\n")
+        body = re.sub(r"--\[no-\]([\w-]+)", r"--\1 --no-\1", body)
         found = set(re.findall(r"(?<![\w-])(--[A-Za-z][\w-]*|-[A-Za-z0-9])(?![\w])", body))
-        flags[name.strip()] = sorted(found)
+        if name.strip() == "git (any)":
+            found = set(re.findall(r"--[a-z][a-z0-9-]+", body))
+        flags[name.strip()] = sorted(found | set(flags.get(name.strip(), [])))
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "flags.json").write_text(json.dumps(flags, indent=1))
     empty = [k for k, v in flags.items() if not v]

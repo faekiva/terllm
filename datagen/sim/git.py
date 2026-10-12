@@ -186,9 +186,11 @@ def long_status(sim, root, repo):
     untr = [p for xy, p in rows if xy == "??"]
     if repo.merging and unmerged:
         out += ["You have unmerged paths.", '  (fix conflicts and run "git commit")', '  (use "git merge --abort" to abort the merge)', ""]
+    if repo.merging and not unmerged:
+        out += ["All conflicts fixed but you are still merging.", '  (use "git commit" to conclude merge)', ""]
     if staged:
         hint = '  (use "git restore --staged <file>..." to unstage)' if repo.head_id() else '  (use "git rm --cached <file>..." to unstage)'
-        out += ["Changes to be committed:", hint] + [f"\t{word[x]}{p}" for x, p in staged] + [""]
+        out += ["Changes to be committed:"] + ([hint] if not repo.merging else []) + [f"\t{word[x]}{p}" for x, p in staged] + [""]
     if unmerged:
         out += ["Unmerged paths:", '  (use "git add <file>..." to mark resolution)'] + [f"\tboth modified:   {p}" for p in unmerged] + [""]
     if unst:

@@ -1117,6 +1117,7 @@ class Sim:
     def c_npm(self, a):
         if not a:
             raise Unsupported("npm bare")
+        self.fs.mkdir(f"{HOME}/.npm")      # real npm creates its cache dir on first use
         sub, rest = a[0], a[1:]
         if sub == "init":
             if "-y" not in rest and "--yes" not in rest:
@@ -1319,6 +1320,7 @@ class Sim:
                 par, _ = self.fs.parent(f"{p}/target")
                 par.children.pop("target", None)
                 return R(0)
+            self.fs.mkdir(f"{HOME}/.cargo")    # created by the first build
             self.fs.mkdir(f"{p}/target/debug")
             self.fs.lookup(f"{p}/target").children["CACHEDIR.TAG"] = Node("f", "")
             self.fs.put(f"{p}/Cargo.lock", "# lock\n")

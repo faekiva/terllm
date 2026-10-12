@@ -1,0 +1,358 @@
+{
+ "version": 0,
+ "generator_commit": "d448d05f1cd264b4733357e9d91f332d13a01ba4",
+ "sessions": 629,
+ "shards": [
+  "shard-00000.jsonl.zst"
+ ],
+ "per_class": {
+  "created_use": {
+   "sessions": 84,
+   "share": 0.1335,
+   "target_steps": 101,
+   "templates": 48
+  },
+  "chained": {
+   "sessions": 78,
+   "share": 0.124,
+   "target_steps": 232,
+   "templates": 39
+  },
+  "error_fix": {
+   "sessions": 130,
+   "share": 0.2067,
+   "target_steps": 214,
+   "templates": 123
+  },
+  "state_action": {
+   "sessions": 90,
+   "share": 0.1431,
+   "target_steps": 94,
+   "templates": 71
+  },
+  "routine": {
+   "sessions": 78,
+   "share": 0.124,
+   "target_steps": 168,
+   "templates": 78
+  },
+  "nav_noise": {
+   "sessions": 40,
+   "share": 0.0636,
+   "target_steps": 98,
+   "templates": 27
+  },
+  "t2c": {
+   "sessions": 129,
+   "share": 0.2051,
+   "target_steps": 129,
+   "templates": 89
+  }
+ },
+ "per_source": {
+  "seed": 569,
+  "tldr": 36,
+  "nl2bash": 24
+ },
+ "templates": 475,
+ "top_templates": [
+  [
+   "tldr.blurlock",
+   3,
+   0.0048
+  ],
+  [
+   "tldr.ansiweather",
+   3,
+   0.0048
+  ],
+  [
+   "tldr.dnsdomainname",
+   3,
+   0.0048
+  ],
+  [
+   "tldr.bootctl",
+   3,
+   0.0048
+  ],
+  [
+   "tldr.break",
+   3,
+   0.0048
+  ]
+ ],
+ "target_commands": {
+  "total": 1036,
+  "unique": 566,
+  "unique_ratio": 0.5463,
+  "distinct_1gram": {
+   "distinct": 695,
+   "total": 2869,
+   "ratio": 0.2422
+  },
+  "distinct_2gram": {
+   "distinct": 846,
+   "total": 1833,
+   "ratio": 0.4615
+  },
+  "distinct_3gram": {
+   "distinct": 541,
+   "total": 912,
+   "ratio": 0.5932
+  }
+ },
+ "top30_programs": [
+  [
+   "git",
+   298,
+   0.2876
+  ],
+  [
+   "cd",
+   98,
+   0.0946
+  ],
+  [
+   "ls",
+   64,
+   0.0618
+  ],
+  [
+   "npm",
+   47,
+   0.0454
+  ],
+  [
+   "cargo",
+   33,
+   0.0319
+  ],
+  [
+   "make",
+   33,
+   0.0319
+  ],
+  [
+   "cmake",
+   32,
+   0.0309
+  ],
+  [
+   "pip",
+   28,
+   0.027
+  ],
+  [
+   "tar",
+   24,
+   0.0232
+  ],
+  [
+   "cat",
+   24,
+   0.0232
+  ],
+  [
+   "docker",
+   23,
+   0.0222
+  ],
+  [
+   "python3",
+   20,
+   0.0193
+  ],
+  [
+   "source",
+   20,
+   0.0193
+  ],
+  [
+   "rm",
+   18,
+   0.0174
+  ],
+  [
+   "python",
+   17,
+   0.0164
+  ],
+  [
+   "main",
+   14,
+   0.0135
+  ],
+  [
+   "touch",
+   12,
+   0.0116
+  ],
+  [
+   "kubectl",
+   12,
+   0.0116
+  ],
+  [
+   "mv",
+   10,
+   0.0097
+  ],
+  [
+   "mkdir",
+   10,
+   0.0097
+  ],
+  [
+   "wc",
+   9,
+   0.0087
+  ],
+  [
+   "systemctl",
+   9,
+   0.0087
+  ],
+  [
+   "unzip",
+   8,
+   0.0077
+  ],
+  [
+   "cp",
+   8,
+   0.0077
+  ],
+  [
+   "find",
+   8,
+   0.0077
+  ],
+  [
+   "node",
+   7,
+   0.0068
+  ],
+  [
+   "chmod",
+   7,
+   0.0068
+  ],
+  [
+   "pnpm",
+   7,
+   0.0068
+  ],
+  [
+   "apt",
+   7,
+   0.0068
+  ],
+  [
+   "app",
+   6,
+   0.0058
+  ]
+ ],
+ "distinct_programs": 82,
+ "unverified_steps_share": 0.0639,
+ "flags": {
+  "checked_targets": 723,
+  "with_unknown_flag": 34,
+  "rate": 0.047,
+  "top_unknown": [
+   [
+    "git --oneline",
+    10
+   ],
+   [
+    "find -e",
+    10
+   ],
+   [
+    "git --set-upstream",
+    5
+   ],
+   [
+    "find -n",
+    5
+   ],
+   [
+    "find -m",
+    5
+   ],
+   [
+    "find -t",
+    5
+   ],
+   [
+    "find -p",
+    5
+   ],
+   [
+    "git --no-edit",
+    3
+   ],
+   [
+    "git --no-ff",
+    2
+   ],
+   [
+    "npm -D",
+    2
+   ],
+   [
+    "git --staged",
+    1
+   ],
+   [
+    "git --show-current",
+    1
+   ],
+   [
+    "wc -s",
+    1
+   ],
+   [
+    "wc -d",
+    1
+   ],
+   [
+    "wc -f",
+    1
+   ]
+  ]
+ },
+ "bash_n_failures": [],
+ "secret_sessions": 0,
+ "exact_dup_sessions": 0,
+ "split": {
+  "train_sessions": 595,
+  "val_sessions": 34,
+  "train_templates": 450,
+  "val_templates": 25
+ },
+ "tokens": {
+  "sample": 2373,
+  "avg_tokens_per_example": 60.5,
+  "max_in_sample": 172,
+  "examples_rendered": 2373,
+  "estimated_total_tokens": 143660
+ },
+ "simulator_agreement": {
+  "step": 0.9942372881355932,
+  "session": 0.98125,
+  "sessions_replayed": 800,
+  "opaque_steps_excluded": 170
+ },
+ "gates": {
+  "no_duplicate_ids": true,
+  "no_exact_duplicates": true,
+  "template_cap<=0.5%": true,
+  "program_cap<=15%": false,
+  "no_secrets": true,
+  "bash_n_clean": true,
+  "val_split_by_template": true
+ },
+ "gates_passed": false
+}
