@@ -15,10 +15,10 @@ import fixtures as FX  # noqa: E402
 PRESENT = set("""cd ls pwd mkdir touch rm rmdir mv cp cat echo printf head tail wc grep find chmod ln export unset source . deactivate
 clear history true false sleep which type tar unzip zip gzip gunzip wget curl git python python3 pip pip3 node npm npx make cmake gcc g++ cc cargo
 bash sh zsh less more file stat date whoami id uname env printenv ps df du free uptime hostname sudo apt apt-get systemctl service docker
-kubectl ssh kill top tee sort uniq diff sed awk xargs exit fx_remote fx_archive fx_project fx_port""".split())
+kubectl ssh kill top tee sort uniq diff sed awk xargs journalctl scp docker-compose exit fx_remote fx_archive fx_project fx_port fx_bare pnpm yarn""".split())
 # present-in-image tools that the simulator can't model => session dropped if used
 MISSING = set()  # anything not in PRESENT is "command not found" (matches the sandbox image)
-OPAQUE = {"apt", "apt-get", "systemctl", "service", "docker", "kubectl", "ssh", "kill", "top", "ps", "df",
+OPAQUE = {"docker-compose", "journalctl", "scp", "apt", "apt-get", "systemctl", "service", "docker", "kubectl", "ssh", "kill", "top", "ps", "df",
           "du", "free", "uptime", "uname", "date", "hostname", "id", "history", "env", "printenv", "sleep"}
 APT_PROVIDES = {"ripgrep": "rg", "tree": "tree", "jq": "jq", "htop": "htop", "vim": "vim", "nano": "nano", "tmux": "tmux",
                 "ncdu": "ncdu", "bat": "bat", "fd-find": "fdfind", "sqlite3": "sqlite3", "golang-go": "go", "default-jre": "java",
@@ -260,6 +260,8 @@ class Sim:
             argv = [w for w, _ in st["words"]]
             if not argv:
                 raise Unsupported("empty stage")
+            if argv[0] == "sudo":
+                argv, self.v = argv[1:], False
             if argv[0] == "grep":
                 r = self.filter_grep(argv[1:], r)
             elif argv[0] in ("head", "tail"):
@@ -425,7 +427,8 @@ class Sim:
     def opaque(self, c, args):
         if c in ("apt", "apt-get"):
             if not self.root:
-                return R(100, "", "E: Could not open lock file /var/lib/dpkg/lock-frontend - open (13: Permission denied)\nE: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), are you root?\n")
+                self.v = True
+                return self.e("apt.update_denied" if args and args[0] == "update" else "apt.install_denied")
             return self.apt(args)
         return R(0)
 
@@ -441,6 +444,8 @@ class Sim:
             return self.e("sh.exec_isdir", path=c)
         if not (n.mode & 0o100):
             return self.e("sh.exec_denied", path=c)
+        if n.content == "<elf>":
+            return R(0, "hi\n")
         return self.run_script(n.content)
 
     def run_script(self, text):
@@ -618,6 +623,8 @@ class Sim:
         *srcs, dst = paths
         dabs = self.abs(dst)
         dn = self.fs.lookup(dabs)
+        if dst.endswith("/") and not (dn and dn.kind == "d"):
+            raise Unsupported("cp/mv to missing dir/")
         if len(srcs) > 1 and not (dn and dn.kind == "d"):
             raise Unsupported("multi-src to non-dir")
         key = "mv" if move else "cp"
@@ -1125,6 +1132,8 @@ class Sim:
                 raise Unsupported("npm -g")
             pj = self.pkg_json()
             if pj is None:
+                if not self.fs.lookup(f"{self.cwd}/package-lock.json"):
+                    self.write_file(f"{self.cwd}/package-lock.json", "{}")  # real npm leaves a stub lockfile behind
                 return self.e("npm.no_package_json", ts="2026-01-01T00_00_00_000Z")
             pk = [x.split("@")[0] if not x.startswith("@") else x for x in rest if not x.startswith("-")]
             want = pk or list(pj.get("dependencies", {})) + list(pj.get("devDependencies", {}))
@@ -1297,7 +1306,7 @@ class Sim:
             for p in ("Cargo.toml", "src/main.rs"):
                 self.fs.put(f"{d}/{p}", files[p])
             if not G.find_repo(self, d)[1]:
-                G.init_repo(self, d)
+                G.init_repo(self, d, branch="master")
                 self.fs.put(f"{d}/.gitignore", "/target\n")
             return R(0, "", f"     Created binary (application) `{name}` package\n")
         if sub in ("build", "run", "test", "check", "clean"):
@@ -1310,10 +1319,9 @@ class Sim:
                 par, _ = self.fs.parent(f"{p}/target")
                 par.children.pop("target", None)
                 return R(0)
-            if sub != "check":
-                self.fs.mkdir(f"{p}/target/debug")
-                self.fs.lookup(f"{p}/target").children["CACHEDIR.TAG"] = Node("f", "")
-                self.fs.put(f"{p}/Cargo.lock", "# lock\n")
+            self.fs.mkdir(f"{p}/target/debug")
+            self.fs.lookup(f"{p}/target").children["CACHEDIR.TAG"] = Node("f", "")
+            self.fs.put(f"{p}/Cargo.lock", "# lock\n")
             return R(0, "hi\n" if sub == "run" else "")
         raise Unsupported(f"cargo {sub}")
 
@@ -1348,6 +1356,16 @@ class Sim:
             G.commit_all_files(self, d, repo, "Initial commit")
         return R(0)
 
+    def c_fx_bare(self, a):
+        G.init_repo(self, f"/srv/git/{a[0]}.git", bare=True)
+        return R(0)
+
+    def c_pnpm(self, a):
+        self.v = False
+        return self.c_npm(npm_equiv(a))
+
+    c_yarn = c_pnpm
+
     def c_fx_port(self, a):
         self.ports.add(int(a[0]))
         return R(0)
@@ -1356,6 +1374,19 @@ class Sim:
     def c_git(self, a):
         from .gitcmd import git
         return git(self, a)
+
+
+def npm_equiv(a):
+    """pnpm/yarn -> the npm command with the same effect (sandbox has neither; steps are marked unvalidated)."""
+    if not a or a[0] in ("install", "i"):
+        return ["install"] + a[1:]
+    if a[0] in ("add",):
+        return ["install"] + a[1:]
+    if a[0] in ("run",):
+        return a
+    if a[0] in ("start", "test", "build", "dev"):
+        return ["run"] + a if a[0] in ("build", "dev") else a
+    raise Unsupported("pnpm/yarn form")
 
 
 def new_session(shell="bash"):

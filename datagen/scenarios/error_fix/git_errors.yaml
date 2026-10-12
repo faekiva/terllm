@@ -1,0 +1,124 @@
+- id: error_fix.no_upstream
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}, br: {gen: branch}}
+  setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "git checkout -q -b {br}", "echo x >> README.md", "git commit -q -am wip"]
+  steps: [{cmd: "git push", expect: fail}, {cmd: "git push --set-upstream origin {br}", target: true}]
+  variants:
+    short: {steps: [{cmd: "git push", expect: fail}, {cmd: "git push -u origin {br}", target: true}]}
+    pull: {steps: [{cmd: "git pull", expect: fail}, {cmd: "git pull origin main", target: true}]}
+    after: {steps: [{cmd: "git push", expect: fail}, {cmd: "git push --set-upstream origin {br}", target: true}, {cmd: "git status", target: true}]}
+- id: error_fix.no_remote
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_bare {u}/{rp}", "mkdir {rp}", "cd {rp}", "git init -q", "echo hi > README.md", "git add .", "git commit -q -m init"]
+  steps: [{cmd: "git push", expect: fail}, {cmd: "git remote add origin https://github.com/{u}/{rp}.git", target: true}, {cmd: "git push -u origin main", target: true}]
+  variants:
+    ssh: {steps: [{cmd: "git push", expect: fail}, {cmd: "git remote add origin git@github.com:{u}/{rp}.git", target: true}, {cmd: "git push -u origin main", target: true}]}
+    pushorigin: {steps: [{cmd: "git push origin main", expect: fail}, {cmd: "git remote add origin https://github.com/{u}/{rp}.git", target: true}, {cmd: "git push -u origin main", target: true}]}
+- id: error_fix.push_rejected
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp} a", "git clone -q https://github.com/{u}/{rp} b", "cd b", "echo b > b.txt", "git add .", "git commit -q -m b", "git push -q", "cd ../a", "echo a > a.txt", "git add .", "git commit -q -m a"]
+  steps: [{cmd: "git push", expect: fail}, {cmd: "git pull", target: true}, {cmd: "git push", target: true}]
+  variants:
+    status: {steps: [{cmd: "git push", expect: fail}, {cmd: "git status", target: true}, {cmd: "git pull", target: true}]}
+    fetch: {steps: [{cmd: "git push", expect: fail}, {cmd: "git fetch", target: true}, {cmd: "git merge origin/main", target: true}, {cmd: "git push", target: true}]}
+- id: error_fix.merge_conflict
+  class: error_fix
+  vars: {br: {gen: branch}}
+  setup: ["fx_project r docs git", "cd r", "echo base > conf.txt", "git add .", "git commit -q -m base", "git checkout -q -b {br}", "echo theirs > conf.txt", "git commit -q -am t", "git checkout -q main", "echo ours > conf.txt", "git commit -q -am o"]
+  steps: [{cmd: "git merge {br}", expect: fail}, {cmd: "git status", target: true}, {cmd: "git add conf.txt", target: true}, {cmd: "git commit --no-edit", target: true}]
+  variants:
+    abort: {steps: [{cmd: "git merge {br}", expect: fail}, {cmd: "git status"}, {cmd: "git merge --abort", target: true}]}
+    commitm: {steps: [{cmd: "git merge {br}", expect: fail}, {cmd: "git add conf.txt", target: true}, {cmd: "git commit -m \"merge {br}\"", target: true}]}
+    early: {steps: [{cmd: "git merge {br}", expect: fail}, {cmd: "git commit -m \"merge\"", expect: fail}, {cmd: "git add conf.txt", target: true}]}
+- id: error_fix.nothing_to_commit
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}, m: {gen: msg}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git commit -m \"{m}\"", expect: fail}, {cmd: "git status", target: true}]
+  variants:
+    unstaged: {setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo x >> README.md"], steps: [{cmd: "git commit -m \"{m}\"", expect: fail}, {cmd: "git add -A", target: true}, {cmd: "git commit -m \"{m}\"", target: true}]}
+    untracked: {setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "touch newfile.txt"], steps: [{cmd: "git commit -m \"{m}\"", expect: fail}, {cmd: "git add newfile.txt", target: true}, {cmd: "git commit -m \"{m}\"", target: true}]}
+    push: {steps: [{cmd: "git commit -m \"{m}\"", expect: fail}, {cmd: "git push", target: true}]}
+- id: error_fix.not_a_repo
+  class: error_fix
+  vars: {rp: {gen: project}}
+  setup: ["fx_project {rp} python"]
+  steps: [{cmd: "git status", expect: fail}, {cmd: "cd {rp}", target: true}, {cmd: "git init", target: true}]
+  variants:
+    init: {setup: ["fx_project {rp} python", "cd {rp}"], steps: [{cmd: "git status", expect: fail}, {cmd: "git init", target: true}, {cmd: "git add .", target: true}]}
+    sub: {vars: {u: {gen: user}}, setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}"], steps: [{cmd: "git log --oneline", expect: fail}, {cmd: "cd {rp}", target: true}, {cmd: "git log --oneline", target: true}]}
+- id: error_fix.checkout_typo
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}, br: {choice: [dev, develop, staging, release, feature-x, hotfix]}, bt: {typo: br}}
+  setup: ["fx_remote {u}/{rp} python {br}", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git checkout {bt}", expect: fail}, {cmd: "git branch -a", target: true}, {cmd: "git checkout {br}", target: true}]
+  variants:
+    switch: {steps: [{cmd: "git switch {bt}", expect: fail}, {cmd: "git branch -a", target: true}, {cmd: "git switch {br}", target: true}]}
+    merge: {steps: [{cmd: "git merge {bt}", expect: fail}, {cmd: "git branch", target: true}, {cmd: "git merge origin/{br}", target: true}]}
+    delete: {steps: [{cmd: "git branch -d {bt}", expect: fail}, {cmd: "git branch", target: true}]}
+- id: error_fix.add_typo
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}, ft: {choice: [README.md, app.py, requirements.txt]}, fb: {typo: ft}}
+  setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo x >> {ft}"]
+  steps: [{cmd: "git add {fb}", expect: fail}, {cmd: "git status", target: true}, {cmd: "git add {ft}", target: true}]
+  variants:
+    ls: {steps: [{cmd: "git add {fb}", expect: fail}, {cmd: "ls", target: true}, {cmd: "git add {ft}", target: true}]}
+    rm: {setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"], steps: [{cmd: "git rm {fb}", expect: fail}, {cmd: "ls", target: true}, {cmd: "git rm {ft}", target: true}]}
+- id: error_fix.remote_exists
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} python", "fx_remote {u}/{rp}-fork docs", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git remote add origin https://github.com/{u}/{rp}-fork.git", expect: fail}, {cmd: "git remote -v", target: true}, {cmd: "git remote set-url origin https://github.com/{u}/{rp}-fork.git", target: true}]
+  variants:
+    upstream: {steps: [{cmd: "git remote add origin https://github.com/{u}/{rp}-fork.git", expect: fail}, {cmd: "git remote add upstream https://github.com/{u}/{rp}-fork.git", target: true}, {cmd: "git fetch upstream", target: true}]}
+- id: error_fix.branch_exists
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}, br: {gen: branch}}
+  setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "git branch {br}"]
+  steps: [{cmd: "git checkout -b {br}", expect: fail}, {cmd: "git checkout {br}", target: true}]
+  variants:
+    switch: {steps: [{cmd: "git switch -c {br}", expect: fail}, {cmd: "git switch {br}", target: true}]}
+- id: error_fix.checkout_dirty
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}, br: {gen: branch}}
+  setup: ["fx_project {rp} docs git", "cd {rp}", "git checkout -q -b {br}", "echo y > README.md", "git commit -q -am c", "git checkout -q main", "echo x > README.md"]
+  steps: [{cmd: "git checkout {br}", expect: fail}, {cmd: "git stash", target: true}, {cmd: "git checkout {br}", target: true}]
+  variants:
+    switch: {steps: [{cmd: "git switch {br}", expect: fail}, {cmd: "git stash", target: true}, {cmd: "git switch {br}", target: true}, {cmd: "git switch main"}, {cmd: "git stash pop", target: true}]}
+    commit: {steps: [{cmd: "git checkout {br}", expect: fail}, {cmd: "git commit -am \"wip\"", target: true}, {cmd: "git checkout {br}", target: true}]}
+- id: error_fix.clone_exists
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}"]
+  steps: [{cmd: "git clone https://github.com/{u}/{rp}", expect: fail}, {cmd: "cd {rp}", target: true}, {cmd: "git pull", target: true}]
+  variants:
+    ls: {steps: [{cmd: "git clone https://github.com/{u}/{rp}", expect: fail}, {cmd: "ls", target: true}, {cmd: "cd {rp}", target: true}]}
+- id: error_fix.log_no_commits
+  class: error_fix
+  vars: {rp: {gen: project}, m: {gen: msg}}
+  setup: ["mkdir {rp}", "cd {rp}", "git init -q", "echo hi > README.md"]
+  steps: [{cmd: "git log", expect: fail}, {cmd: "git add .", target: true}, {cmd: "git commit -m \"{m}\"", target: true}]
+  variants:
+    branch: {steps: [{cmd: "git branch dev", expect: fail}, {cmd: "git add README.md", target: true}, {cmd: "git commit -m \"{m}\"", target: true}]}
+    push: {vars: {u: {gen: user}}, setup: ["fx_bare {u}/{rp}", "mkdir {rp}", "cd {rp}", "git init -q", "echo hi > README.md", "git remote add origin https://github.com/{u}/{rp}.git"], steps: [{cmd: "git push -u origin main", expect: fail}, {cmd: "git add .", target: true}, {cmd: "git commit -m \"{m}\"", target: true}, {cmd: "git push -u origin main", target: true}]}
+- id: error_fix.typo_git_sub
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}, tp: {choice: [[stauts, status], [staus, status], [statu, status], [stats, status], [psuh, push], [puhs, push], [pushh, push], [pul, pull], [pll, pull], [brach, branch], [brnach, branch], [banch, branch], [fecth, fetch], [fetc, fetch], [lgo, log], [dif, diff], [stsh, stash], [remot, remote], [tga, tag]]}}
+  setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git {tp[0]}", expect: fail}, {cmd: "git {tp[1]}", target: true}]
+  variants:
+    dirty: {setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo x >> README.md"], steps: [{cmd: "git {tp[0]}", expect: fail}, {cmd: "git {tp[1]}", target: true}]}
+- id: error_fix.typo_git_commit
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}, ty: {choice: [comit, commmit, comitt, cmmit]}, m: {gen: msg}}
+  setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo x >> README.md", "git add README.md"]
+  steps: [{cmd: "git {ty} -m \"{m}\"", expect: fail}, {cmd: "git commit -m \"{m}\"", target: true}]
+- id: error_fix.typo_git_checkout
+  class: error_fix
+  vars: {u: {gen: user}, rp: {gen: project}, ty: {choice: [chekout, checkou, chckout, checkot]}, br: {choice: [dev, develop, staging]}}
+  setup: ["fx_remote {u}/{rp} python {br}", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git {ty} {br}", expect: fail}, {cmd: "git checkout {br}", target: true}]
+  variants:
+    switch: {vars: {ty: {choice: [swich, switc, siwtch]}}, steps: [{cmd: "git {ty} {br}", expect: fail}, {cmd: "git switch {br}", target: true}]}

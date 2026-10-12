@@ -138,3 +138,9 @@
 - {key: git.typo.switc, setup: "fx_project r docs git", cwd: r, cmd: "git switc", params: {cmd: switc}}
 - {key: git.typo.tga, setup: "fx_project r docs git", cwd: r, cmd: "git tga", params: {cmd: tga}}
 - {key: git.typo.pushh, setup: "fx_project r docs git", cwd: r, cmd: "git pushh", params: {cmd: pushh}}
+- {key: apt.install_denied, cmd: "apt install tree"}
+- {key: apt.update_denied, cmd: "apt update"}
+- {key: git.typo.checkot, setup: "fx_project r docs git", cwd: r, cmd: "git checkot", params: {cmd: checkot}}
+- {key: git.typo.cmmit, setup: "fx_project r docs git", cwd: r, cmd: "git cmmit", params: {cmd: cmmit}}
+- {key: git.typo.siwtch, setup: "fx_project r docs git", cwd: r, cmd: "git siwtch", params: {cmd: siwtch}}
+- {key: git.rm.modified, setup: "fx_project r docs git; cd r; echo x >> README.md", cwd: r, cmd: "git rm README.md", params: {path: README.md}}

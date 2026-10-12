@@ -46,6 +46,7 @@ def parse(raw):
 def templatize(text, params, cwd, shell):
     text = text.replace("\r", "")
     text = re.sub(r"(?m)^Looking in links: .*\n", "", text)  # sandbox artefact (PIP_FIND_LINKS)
+    text = text.replace("\nWARNING: apt does not have a stable CLI interface. Use with caution in scripts.\n\n", "")  # only printed without a tty
     if shell == "bash":
         text = "\n".join(l for l in text.split("\n") if "cannot set terminal process group" not in l and "no job control" not in l)
     if shell == "zsh":

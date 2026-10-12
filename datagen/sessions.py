@@ -37,6 +37,17 @@ def load_templates(path=SCEN):
     return out
 
 
+def typo(r, w):
+    """A plausible keyboard slip of w (drop / swap / double a character), never equal to w."""
+    for _ in range(20):
+        i = r.randrange(1, max(len(w) - 1, 2))
+        op = r.randrange(3)
+        t = w[:i] + w[i + 1:] if op == 0 else (w[:i] + w[i + 1] + w[i] + w[i + 2:] if i + 1 < len(w) else w) if op == 1 else w[:i] + w[i] + w[i:]
+        if t != w and t:
+            return t
+    return w + "x"
+
+
 def fmt(s, v):
     return s.format(**v) if isinstance(s, str) else s
 
@@ -79,7 +90,14 @@ def build_session(spec, seed):
     r = random.Random(seed)
     v = {"base": base_dir(r)}
     for name, vs in spec.get("vars", {}).items():
-        v[name] = fmt(vs["fmt"], v) if "fmt" in vs else draw(r, vs)
+        if "fmt" in vs:
+            v[name] = fmt(vs["fmt"], v)
+        elif "typo" in vs:
+            v[name] = typo(r, str(v[vs["typo"]]))
+        elif "add" in vs:
+            v[name] = v[vs["add"][0]] + vs["add"][1]
+        else:
+            v[name] = draw(r, vs)
     shell = pick(r, spec.get("shell", ["bash", "zsh"]))
     sim = Sim(shell)
     setup = [f"mkdir -p {v['base']} && cd {v['base']}"] + [fmt(s, v) for s in spec.get("setup", [])]

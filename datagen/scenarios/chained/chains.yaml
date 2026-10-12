@@ -1,0 +1,107 @@
+- id: chained.dl_build_run
+  class: chained
+  vars: {n: {gen: word}, ver: {gen: version}}
+  setup: ["fx_archive {n}-{ver}.tar.gz c"]
+  steps: [{cmd: "wget https://example.org/dl/{n}-{ver}.tar.gz"}, {cmd: "tar xzf {n}-{ver}.tar.gz", target: true}, {cmd: "cd {n}-{ver}", target: true}, {cmd: "make", target: true}, {cmd: "./main", target: true}]
+  variants:
+    curl: {steps: [{cmd: "curl -LO https://example.org/dl/{n}-{ver}.tar.gz"}, {cmd: "tar xzf {n}-{ver}.tar.gz", target: true}, {cmd: "cd {n}-{ver}", target: true}, {cmd: "make", target: true}, {cmd: "./main", target: true}]}
+    clean: {steps: [{cmd: "wget https://example.org/dl/{n}-{ver}.tar.gz"}, {cmd: "tar xzf {n}-{ver}.tar.gz"}, {cmd: "cd {n}-{ver}"}, {cmd: "make", target: true}, {cmd: "make clean", target: true}]}
+    zip: {setup: ["fx_archive {n}-{ver}.zip c"], steps: [{cmd: "wget https://example.org/dl/{n}-{ver}.zip"}, {cmd: "unzip {n}-{ver}.zip", target: true}, {cmd: "cd {n}-{ver}", target: true}, {cmd: "make", target: true}]}
+    gcc: {steps: [{cmd: "wget https://example.org/dl/{n}-{ver}.tar.gz"}, {cmd: "tar xzf {n}-{ver}.tar.gz"}, {cmd: "cd {n}-{ver}"}, {cmd: "gcc -o {n} main.c", target: true}, {cmd: "./{n}", target: true}]}
+- id: chained.dl_cmake
+  class: chained
+  vars: {n: {gen: word}, ver: {gen: version}}
+  setup: ["fx_archive {n}-{ver}.tar.gz cmake"]
+  steps: [{cmd: "wget https://example.org/dl/{n}-{ver}.tar.gz"}, {cmd: "tar xzf {n}-{ver}.tar.gz"}, {cmd: "cd {n}-{ver}", target: true}, {cmd: "mkdir build", target: true}, {cmd: "cd build", target: true}, {cmd: "cmake ..", target: true}, {cmd: "make", target: true}, {cmd: "./app", target: true}]
+  variants:
+    B: {steps: [{cmd: "wget https://example.org/dl/{n}-{ver}.tar.gz"}, {cmd: "tar xzf {n}-{ver}.tar.gz"}, {cmd: "cd {n}-{ver}"}, {cmd: "cmake -B build", target: true}, {cmd: "cmake --build build", target: true}, {cmd: "./build/app", target: true}]}
+- id: chained.venv_install_run
+  class: chained
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python", "cd {d}"]
+  steps: [{cmd: "python3 -m venv .venv"}, {cmd: "source .venv/bin/activate", target: true}, {cmd: "pip install -r requirements.txt", target: true}, {cmd: "python app.py", target: true}]
+  variants:
+    pytest: {steps: [{cmd: "python3 -m venv .venv"}, {cmd: "source .venv/bin/activate"}, {cmd: "pip install -r requirements.txt"}, {cmd: "pip install pytest", target: true}, {cmd: "pytest", target: true}]}
+    mpytest: {steps: [{cmd: "python -m venv venv"}, {cmd: "source venv/bin/activate"}, {cmd: "pip install pytest requests"}, {cmd: "python -m pytest", target: true}]}
+    freeze: {setup: ["fx_project {d} python git", "cd {d}"], steps: [{cmd: "python3 -m venv .venv"}, {cmd: "source .venv/bin/activate"}, {cmd: "pip install flask"}, {cmd: "pip freeze > requirements.txt", target: true}, {cmd: "git add requirements.txt", target: true}]}
+- id: chained.clone_py
+  class: chained
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} python"]
+  steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}", target: true}, {cmd: "python3 -m venv .venv", target: true}, {cmd: "source .venv/bin/activate", target: true}, {cmd: "pip install -r requirements.txt", target: true}, {cmd: "python app.py", target: true}]
+- id: chained.clone_node
+  class: chained
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} node"]
+  steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}", target: true}, {cmd: "npm install", target: true}, {cmd: "npm run build", target: true}, {cmd: "npm start", target: true}]
+  variants:
+    test: {steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}"}, {cmd: "npm install", target: true}, {cmd: "npm test", target: true}]}
+    pnpm: {steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}"}, {cmd: "pnpm install", target: true}, {cmd: "pnpm build", target: true}]}
+    yarn: {steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}"}, {cmd: "yarn install", target: true}, {cmd: "yarn start", target: true}]}
+- id: chained.clone_rust
+  class: chained
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} rust"]
+  steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}", target: true}, {cmd: "cargo build", target: true}, {cmd: "cargo run", target: true}]
+  variants:
+    release: {steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}"}, {cmd: "cargo build --release", target: true}, {cmd: "cargo test", target: true}]}
+- id: chained.clone_c
+  class: chained
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} c"]
+  steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}", target: true}, {cmd: "make", target: true}, {cmd: "./main", target: true}]
+  variants:
+    cmake: {setup: ["fx_remote {u}/{rp} cmake"], steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}"}, {cmd: "cmake -S . -B build", target: true}, {cmd: "cmake --build build", target: true}]}
+- id: chained.first_push
+  class: chained
+  vars: {u: {gen: user}, rp: {gen: project}, m: {gen: msg}}
+  setup: ["fx_bare {u}/{rp}", "mkdir {rp}", "cd {rp}", "echo hello > README.md"]
+  steps: [{cmd: "git init"}, {cmd: "git add .", target: true}, {cmd: "git commit -m \"{m}\"", target: true}, {cmd: "git remote add origin https://github.com/{u}/{rp}.git", target: true}, {cmd: "git push -u origin main", target: true}]
+  variants:
+    am: {steps: [{cmd: "git init"}, {cmd: "git add -A", target: true}, {cmd: "git commit -m \"{m}\"", target: true}, {cmd: "git branch -M main"}, {cmd: "git remote add origin git@github.com:{u}/{rp}.git", target: true}, {cmd: "git push -u origin main", target: true}]}
+    status: {steps: [{cmd: "git init"}, {cmd: "git status"}, {cmd: "git add README.md", target: true}, {cmd: "git status"}, {cmd: "git commit -m \"{m}\"", target: true}]}
+- id: chained.feature_flow
+  class: chained
+  vars: {u: {gen: user}, rp: {gen: project}, br: {gen: branch}, m: {gen: msg}}
+  setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git checkout -b {br}"}, {cmd: "echo \"# change\" >> README.md"}, {cmd: "git add README.md", target: true}, {cmd: "git commit -m \"{m}\"", target: true}, {cmd: "git push -u origin {br}", target: true}]
+  variants:
+    switch: {steps: [{cmd: "git switch -c {br}"}, {cmd: "echo \"# change\" >> README.md"}, {cmd: "git add -A", target: true}, {cmd: "git commit -m \"{m}\"", target: true}, {cmd: "git push -u origin {br}", target: true}]}
+    am: {steps: [{cmd: "git checkout -b {br}"}, {cmd: "echo \"# change\" >> README.md"}, {cmd: "git commit -am \"{m}\"", target: true}, {cmd: "git push --set-upstream origin {br}", target: true}]}
+    status: {steps: [{cmd: "git checkout -b {br}"}, {cmd: "echo \"# change\" >> README.md"}, {cmd: "git status", target: true}, {cmd: "git add .", target: true}, {cmd: "git commit -m \"{m}\"", target: true}]}
+    back: {steps: [{cmd: "git checkout -b {br}"}, {cmd: "echo \"# change\" >> README.md"}, {cmd: "git commit -am \"{m}\""}, {cmd: "git checkout main", target: true}, {cmd: "git merge {br}", target: true}, {cmd: "git push", target: true}]}
+- id: chained.merge_flow
+  class: chained
+  vars: {u: {gen: user}, rp: {gen: project}, br: {gen: branch}}
+  setup: ["fx_remote {u}/{rp} node {br}", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "git checkout -q {br}"]
+  steps: [{cmd: "git checkout main"}, {cmd: "git merge {br}", target: true}, {cmd: "git push", target: true}, {cmd: "git branch -d {br}", target: true}]
+  variants:
+    switch: {steps: [{cmd: "git switch main"}, {cmd: "git pull", target: true}, {cmd: "git merge {br}", target: true}]}
+    noff: {steps: [{cmd: "git switch main"}, {cmd: "git merge --no-ff {br}", target: true}, {cmd: "git log --oneline", target: true}]}
+- id: chained.stash_flow
+  class: chained
+  vars: {u: {gen: user}, rp: {gen: project}, br: {choice: [dev, develop, staging]}}
+  setup: ["fx_remote {u}/{rp} python {br}", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo wip >> README.md"]
+  steps: [{cmd: "git stash", target: true}, {cmd: "git checkout {br}", target: true}, {cmd: "git checkout main"}, {cmd: "git stash pop", target: true}]
+  variants:
+    switch: {steps: [{cmd: "git stash", target: true}, {cmd: "git switch {br}", target: true}, {cmd: "git switch main"}, {cmd: "git stash pop", target: true}]}
+- id: chained.cargo_flow
+  class: chained
+  vars: {d: {gen: project}}
+  steps: [{cmd: "cargo new {d}"}, {cmd: "cd {d}", target: true}, {cmd: "cargo build", target: true}, {cmd: "cargo run", target: true}, {cmd: "git status", target: true}]
+- id: chained.npm_scratch
+  class: chained
+  vars: {d: {gen: project}, p: {gen: npm}}
+  steps: [{cmd: "mkdir {d}"}, {cmd: "cd {d}"}, {cmd: "npm init -y", target: true}, {cmd: "npm install {p}", target: true}, {cmd: "touch index.js", target: true}, {cmd: "node index.js", target: true}]
+- id: chained.py_scratch
+  class: chained
+  vars: {d: {gen: project}, p: {gen: pip}}
+  steps: [{cmd: "mkdir {d}"}, {cmd: "cd {d}"}, {cmd: "python3 -m venv .venv", target: true}, {cmd: "source .venv/bin/activate", target: true}, {cmd: "pip install {p}", target: true}, {cmd: "touch app.py", target: true}, {cmd: "python app.py", target: true}]
+- id: chained.rebuild
+  class: chained
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} node", "cd {d}", "npm install"]
+  steps: [{cmd: "rm -rf node_modules", target: true}, {cmd: "npm install", target: true}, {cmd: "npm run build", target: true}]
+  variants:
+    cmake: {setup: ["fx_project {d} cmake", "cd {d}", "cmake -B build"], steps: [{cmd: "rm -rf build", target: true}, {cmd: "cmake -B build", target: true}, {cmd: "cmake --build build", target: true}]}
+    make: {setup: ["fx_project {d} c", "cd {d}", "make"], steps: [{cmd: "make clean", target: true}, {cmd: "make", target: true}, {cmd: "./main", target: true}]}

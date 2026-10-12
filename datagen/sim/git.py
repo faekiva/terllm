@@ -133,6 +133,8 @@ def status_entries(sim, root, repo):
                 y = "M"
         if x != " " or y != " ":
             rows.append((x + y, p))
+        if p not in idx and p in wt and not ignored(pats, p):
+            untracked.append(p)
     # collapse fully-untracked directories like git does
     dirs, flat = {}, []
     for u in untracked:
@@ -173,8 +175,9 @@ def long_status(sim, root, repo):
             out += [f"Your branch is behind '{up}' by {pl(behind)}, and can be fast-forwarded.", '  (use "git pull" to update your local branch)']
         else:
             out += [f"Your branch is up to date with '{up}'."]
+        out.append("")
     if repo.head_id() is None:
-        out += ["", "No commits yet"]
+        out += ["", "No commits yet", ""]
     rows = status_entries(sim, root, repo)
     word = {"M": "modified:   ", "A": "new file:   ", "D": "deleted:    ", "R": "renamed:    "}
     staged = [(xy[0], p) for xy, p in rows if xy[0] in "MADR" and xy != "??"]
@@ -182,24 +185,23 @@ def long_status(sim, root, repo):
     unmerged = [p for xy, p in rows if xy == "UU"]
     untr = [p for xy, p in rows if xy == "??"]
     if repo.merging and unmerged:
-        out += ["", "You have unmerged paths.", '  (fix conflicts and run "git commit")', '  (use "git merge --abort" to abort the merge)']
+        out += ["You have unmerged paths.", '  (fix conflicts and run "git commit")', '  (use "git merge --abort" to abort the merge)', ""]
     if staged:
         hint = '  (use "git restore --staged <file>..." to unstage)' if repo.head_id() else '  (use "git rm --cached <file>..." to unstage)'
-        out += ["", "Changes to be committed:", hint] + [f"\t{word[x]}{p}" for x, p in staged]
+        out += ["Changes to be committed:", hint] + [f"\t{word[x]}{p}" for x, p in staged] + [""]
     if unmerged:
-        out += ["", "Unmerged paths:", '  (use "git add <file>..." to mark resolution)'] + [f"\tboth modified:   {p}" for p in unmerged]
+        out += ["Unmerged paths:", '  (use "git add <file>..." to mark resolution)'] + [f"\tboth modified:   {p}" for p in unmerged] + [""]
     if unst:
         dele = any(x == "D" for x, _ in unst)
-        out += ["", "Changes not staged for commit:", f'  (use "git add{"/rm" if dele else ""} <file>..." to update what will be committed)',
-                '  (use "git restore <file>..." to discard changes in working directory)'] + [f"\t{word[x]}{p}" for x, p in unst]
+        out += ["Changes not staged for commit:", f'  (use "git add{"/rm" if dele else ""} <file>..." to update what will be committed)',
+                '  (use "git restore <file>..." to discard changes in working directory)'] + [f"\t{word[x]}{p}" for x, p in unst] + [""]
     if untr:
-        out += ["", "Untracked files:", '  (use "git add <file>..." to include in what will be committed)'] + [f"\t{p}" for p in untr]
-    if not staged and not unmerged:
-        out += [""]
-        if unst:
+        out += ["Untracked files:", '  (use "git add <file>..." to include in what will be committed)'] + [f"\t{p}" for p in untr] + [""]
+    if not staged:
+        if unst or unmerged:
             out += ['no changes added to commit (use "git add" and/or "git commit -a")']
         elif untr:
-            out += ['nothing added to commit but untracked files present (use "git add" to track)' if repo.head_id() else 'nothing added to commit but untracked files present (use "git add" to track)']
+            out += ['nothing added to commit but untracked files present (use "git add" to track)']
         else:
             out += ["nothing to commit, working tree clean" if repo.head_id() else 'nothing to commit (create/copy files and use "git add" to track)']
     return "\n".join(out) + "\n"
@@ -260,7 +262,7 @@ def fx_remote(sim, slug, lang="docs", branches=()):
     return r
 
 
-def clone(sim, url, dest):
+def clone(sim, url, dest, branch=None):
     slug = url
     for pre in ("https://github.com/", "git@github.com:", "https://gitlab.com/", "git@gitlab.com:"):
         if slug.startswith(pre):
@@ -287,8 +289,10 @@ def clone(sim, url, dest):
     r.remotes["origin"] = cand
     for b, c in remote.branches.items():
         r.remote_refs[f"origin/{b}"] = c
-    r.branches[remote.head] = remote.branches[remote.head]
-    r.upstream[remote.head] = f"origin/{remote.head}"
+    if branch and f"origin/{branch}" in r.remote_refs:
+        r.head = branch
+    r.branches[r.head] = remote.branches[r.head]
+    r.upstream[r.head] = f"origin/{r.head}"
     r.index = dict(remote.tree(r.head_id()))
     write_tree(sim, dest, r.index, {})
     return r

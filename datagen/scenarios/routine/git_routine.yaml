@@ -1,0 +1,65 @@
+- id: routine.git_commit_push
+  class: routine
+  vars: {u: {gen: user}, rp: {gen: project}, m: {gen: msg}, f: {choice: [README.md, app.py, requirements.txt]}}
+  setup: ["fx_remote {u}/{rp} python", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo '# edit' >> {f}"]
+  steps: [{cmd: "git status"}, {cmd: "git add {f}", target: true}, {cmd: "git commit -m \"{m}\"", target: true}, {cmd: "git push", target: true}]
+  variants:
+    dot: {steps: [{cmd: "git status"}, {cmd: "git add .", target: true}, {cmd: "git commit -m \"{m}\"", target: true}, {cmd: "git push", target: true}]}
+    A: {steps: [{cmd: "git add -A", target: true}, {cmd: "git commit -m \"{m}\"", target: true}, {cmd: "git push origin main", target: true}]}
+    am: {steps: [{cmd: "git diff"}, {cmd: "git commit -am \"{m}\"", target: true}, {cmd: "git push", target: true}]}
+    log: {steps: [{cmd: "git add {f}", target: true}, {cmd: "git commit -m \"{m}\"", target: true}, {cmd: "git log --oneline -5", target: true}, {cmd: "git push", target: true}]}
+    amend: {steps: [{cmd: "git add {f}"}, {cmd: "git commit -m \"{m}\""}, {cmd: "echo more >> {f}"}, {cmd: "git add {f}", target: true}, {cmd: "git commit --amend --no-edit", target: true}]}
+    status_after: {steps: [{cmd: "git add -A"}, {cmd: "git commit -m \"{m}\""}, {cmd: "git status", target: true}, {cmd: "git push", target: true}]}
+- id: routine.git_pull_work
+  class: routine
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git pull", target: true}, {cmd: "git log --oneline -5", target: true}, {cmd: "git status", target: true}]
+  variants:
+    fetch: {steps: [{cmd: "git fetch", target: true}, {cmd: "git status", target: true}]}
+    all: {steps: [{cmd: "git fetch --all", target: true}, {cmd: "git branch -a", target: true}]}
+    remote: {steps: [{cmd: "git remote -v", target: true}, {cmd: "git pull origin main", target: true}]}
+    diff: {steps: [{cmd: "git diff", target: true}, {cmd: "git log", target: true}]}
+- id: routine.git_branches
+  class: routine
+  vars: {u: {gen: user}, rp: {gen: project}, br: {choice: [dev, develop, staging, next]}}
+  setup: ["fx_remote {u}/{rp} python {br}", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git branch -a", target: true}, {cmd: "git checkout {br}", target: true}, {cmd: "git pull", target: true}]
+  variants:
+    switch: {steps: [{cmd: "git branch -r", target: true}, {cmd: "git switch {br}", target: true}, {cmd: "git log --oneline", target: true}]}
+    back: {steps: [{cmd: "git switch {br}"}, {cmd: "git switch main", target: true}, {cmd: "git merge {br}", target: true}]}
+    delete: {steps: [{cmd: "git switch {br}"}, {cmd: "git switch main"}, {cmd: "git branch -d {br}", target: true}, {cmd: "git branch", target: true}]}
+    rename: {steps: [{cmd: "git branch -m main trunk", target: true}, {cmd: "git branch", target: true}]}
+- id: routine.git_stash_pull
+  class: routine
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo wip >> README.md"]
+  steps: [{cmd: "git stash", target: true}, {cmd: "git pull", target: true}, {cmd: "git stash pop", target: true}]
+  variants:
+    list: {steps: [{cmd: "git stash", target: true}, {cmd: "git stash list", target: true}, {cmd: "git stash pop", target: true}]}
+- id: routine.git_undo
+  class: routine
+  vars: {u: {gen: user}, rp: {gen: project}, m: {gen: msg}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo one >> README.md", "git commit -q -am one", "echo two >> README.md", "git commit -q -am two"]
+  steps: [{cmd: "git log --oneline", target: true}, {cmd: "git reset --soft HEAD~1", target: true}, {cmd: "git status", target: true}]
+  variants:
+    hard: {steps: [{cmd: "git log --oneline"}, {cmd: "git reset --hard HEAD~1", target: true}, {cmd: "git status", target: true}]}
+    mixed: {steps: [{cmd: "git reset HEAD~1", target: true}, {cmd: "git status -s", target: true}, {cmd: "git add .", target: true}]}
+    restore: {setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo oops >> README.md"], steps: [{cmd: "git diff", target: true}, {cmd: "git restore README.md", target: true}, {cmd: "git status", target: true}]}
+    checkout: {setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo oops >> README.md"], steps: [{cmd: "git status -s"}, {cmd: "git checkout -- README.md", target: true}]}
+    rm: {steps: [{cmd: "git rm --cached README.md", target: true}, {cmd: "git status -s", target: true}]}
+    mv: {steps: [{cmd: "git mv README.md README.rst", target: true}, {cmd: "git status -s", target: true}, {cmd: "git commit -m \"{m}\"", target: true}]}
+- id: routine.git_tag
+  class: routine
+  vars: {u: {gen: user}, rp: {gen: project}, ver: {gen: version}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git tag v{ver}", target: true}, {cmd: "git tag", target: true}]
+  variants:
+    del: {setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "git tag v{ver}"], steps: [{cmd: "git tag", target: true}, {cmd: "git tag -d v{ver}", target: true}]}
+- id: routine.git_config_remote
+  class: routine
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git remote -v", target: true}, {cmd: "git remote set-url origin git@github.com:{u}/{rp}.git", target: true}, {cmd: "git remote -v", target: true}]
+  variants:
+    config: {steps: [{cmd: "git config user.name \"{u}\"", target: true}, {cmd: "git config user.email \"{u}@example.com\"", target: true}]}

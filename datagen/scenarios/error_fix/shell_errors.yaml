@@ -1,0 +1,190 @@
+- id: error_fix.not_found_apt
+  class: error_fix
+  vars: {t: {gen: apt}, w: {gen: word}}
+  steps: [{cmd: "{t[0]} {w}", expect: fail}, {cmd: "sudo apt install {t[1]}", target: true}]
+  variants:
+    y: {steps: [{cmd: "{t[0]} --version", expect: fail}, {cmd: "sudo apt install -y {t[1]}", target: true}, {cmd: "{t[0]} --version", target: true}]}
+    update: {steps: [{cmd: "{t[0]}", expect: fail}, {cmd: "sudo apt update", target: true}, {cmd: "sudo apt install {t[1]}", target: true}]}
+- id: error_fix.apt_no_sudo
+  class: error_fix
+  vars: {t: {gen: apt}}
+  steps: [{cmd: "apt install {t[1]}", expect: fail}, {cmd: "sudo apt install {t[1]}", target: true}]
+  variants:
+    update: {steps: [{cmd: "apt update", expect: fail}, {cmd: "sudo apt update", target: true}]}
+- id: error_fix.typo_cmd
+  class: error_fix
+  vars: {tp: {choice: [[gti, git], [gt, git], [got, git], [gitt, git]]}, a: {choice: [status, branch, "remote -v", fetch, "log --oneline"]}, u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "{tp[0]} {a}", expect: fail}, {cmd: "{tp[1]} {a}", target: true}]
+  variants:
+    ls: {vars: {tp: {choice: [[sl, ls], [lss, ls], [ks, ls], [l, ls]]}}, steps: [{cmd: "{tp[0]}", expect: fail}, {cmd: "{tp[1]}", target: true}]}
+    cat: {vars: {tp: {choice: [[cta, cat], [cat1, cat], [catt, cat], [ct, cat]]}}, steps: [{cmd: "{tp[0]} README.md", expect: fail}, {cmd: "{tp[1]} README.md", target: true}]}
+    mkdir: {vars: {tp: {choice: [[mkidr, mkdir], [mkdr, mkdir], [mdkir, mkdir], [mkdri, mkdir]]}, d: {gen: word}}, steps: [{cmd: "{tp[0]} {d}", expect: fail}, {cmd: "{tp[1]} {d}", target: true}]}
+    py: {vars: {tp: {choice: [[pytohn, python], [pyhton, python], [pyton, python], [pythn, python], [pytohn3, python3], [pyhton3, python3]]}}, steps: [{cmd: "{tp[0]} --version", expect: fail}, {cmd: "{tp[1]} --version", target: true}]}
+    node: {vars: {tp: {choice: [[ndoe, node], [nod, node], [noed, node], [nde, node]]}}, steps: [{cmd: "{tp[0]} index.js", expect: fail}, {cmd: "{tp[1]} index.js", target: true}]}
+    make: {vars: {tp: {choice: [[maek, make], [mak, make], [amke, make], [mke, make]]}}, setup: ["fx_project {rp} c", "cd {rp}"], steps: [{cmd: "{tp[0]}", expect: fail}, {cmd: "{tp[1]}", target: true}]}
+    cd: {vars: {tp: {choice: [["cd..", "cd .."], ["cd...", "cd .."], ["cs ..", "cd .."]]}}, steps: [{cmd: "{tp[0]}", expect: fail}, {cmd: "{tp[1]}", target: true}]}
+    npm: {vars: {tp: {choice: [[nmp, npm], [npn, npm], [nom, npm], [mpm, npm]]}}, steps: [{cmd: "{tp[0]} install", expect: fail}, {cmd: "{tp[1]} install", target: true}]}
+    touch: {vars: {tp: {choice: [[tuch, touch], [touh, touch], [toch, touch]]}, f: {gen: file_txt}}, steps: [{cmd: "{tp[0]} {f}", expect: fail}, {cmd: "{tp[1]} {f}", target: true}]}
+    grep: {vars: {tp: {choice: [[grpe, grep], [gerp, grep], [gre, grep]]}}, steps: [{cmd: "{tp[0]} -r {rp} .", expect: fail}, {cmd: "{tp[1]} -r {rp} .", target: true}]}
+- id: error_fix.perm_denied
+  class: error_fix
+  vars: {d: {gen: word}, f: {gen: file_txt}}
+  steps: [{cmd: "mkdir /opt/{d}", expect: fail}, {cmd: "sudo mkdir /opt/{d}", target: true}]
+  variants:
+    cp: {setup: ["touch {f}"], steps: [{cmd: "cp {f} /usr/local/bin/", expect: fail}, {cmd: "sudo cp {f} /usr/local/bin/", target: true}]}
+    touch: {steps: [{cmd: "touch /etc/{f}", expect: fail}, {cmd: "sudo touch /etc/{f}", target: true}]}
+    redirect: {steps: [{cmd: "echo \"127.0.0.1 {d}.local\" >> /etc/hosts", expect: fail}, {cmd: "echo \"127.0.0.1 {d}.local\" | sudo tee -a /etc/hosts", target: true}]}
+    mv: {setup: ["touch {f}"], steps: [{cmd: "mv {f} /usr/local/bin/", expect: fail}, {cmd: "sudo mv {f} /usr/local/bin/", target: true}]}
+- id: error_fix.exec_denied
+  class: error_fix
+  vars: {f: {gen: file_sh}}
+  setup: ["echo 'echo hi' > {f}"]
+  steps: [{cmd: "./{f}", expect: fail}, {cmd: "chmod +x {f}", target: true}, {cmd: "./{f}", target: true}]
+  variants:
+    bash: {steps: [{cmd: "./{f}", expect: fail}, {cmd: "bash {f}", target: true}]}
+    ls: {steps: [{cmd: "./{f}", expect: fail}, {cmd: "ls -l {f}", target: true}, {cmd: "chmod +x {f}", target: true}]}
+- id: error_fix.exec_nofile
+  class: error_fix
+  vars: {f: {gen: file_sh}, d: {gen: project}}
+  setup: ["mkdir {d}", "echo 'echo hi' > {d}/{f}", "chmod +x {d}/{f}"]
+  steps: [{cmd: "./{f}", expect: fail}, {cmd: "ls", target: true}, {cmd: "cd {d}", target: true}, {cmd: "./{f}", target: true}]
+  variants:
+    direct: {steps: [{cmd: "./{f}", expect: fail}, {cmd: "./{d}/{f}", target: true}]}
+- id: error_fix.venv_pip
+  class: error_fix
+  vars: {p: {gen: pip}}
+  steps: [{cmd: "pip install {p}", expect: fail}, {cmd: "python3 -m venv .venv", target: true}, {cmd: "source .venv/bin/activate", target: true}, {cmd: "pip install {p}", target: true}]
+  variants:
+    r: {vars: {d: {gen: project}}, setup: ["fx_project {d} python", "cd {d}"], steps: [{cmd: "pip install -r requirements.txt", expect: fail}, {cmd: "python3 -m venv .venv", target: true}, {cmd: "source .venv/bin/activate", target: true}, {cmd: "pip install -r requirements.txt", target: true}]}
+    pip3: {steps: [{cmd: "pip3 install {p}", expect: fail}, {cmd: "python3 -m venv venv", target: true}, {cmd: "source venv/bin/activate", target: true}]}
+- id: error_fix.module_missing
+  class: error_fix
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate"]
+  steps: [{cmd: "python app.py", expect: fail}, {cmd: "pip install requests", target: true}, {cmd: "python app.py", target: true}]
+  variants:
+    req: {steps: [{cmd: "python app.py", expect: fail}, {cmd: "pip install -r requirements.txt", target: true}, {cmd: "python app.py", target: true}]}
+    nov: {setup: ["fx_project {d} python", "cd {d}"], steps: [{cmd: "python3 app.py", expect: fail}, {cmd: "python3 -m venv .venv", target: true}, {cmd: "source .venv/bin/activate", target: true}, {cmd: "pip install -r requirements.txt", target: true}, {cmd: "python3 app.py", target: true}]}
+- id: error_fix.py_no_file
+  class: error_fix
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python"]
+  steps: [{cmd: "python app.py", expect: fail}, {cmd: "cd {d}", target: true}, {cmd: "python3 -m venv .venv"}]
+  variants:
+    ls: {steps: [{cmd: "python3 app.py", expect: fail}, {cmd: "ls", target: true}, {cmd: "cd {d}", target: true}]}
+- id: error_fix.npm_cwd
+  class: error_fix
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} node"]
+  steps: [{cmd: "npm install", expect: fail}, {cmd: "cd {d}", target: true}, {cmd: "npm install", target: true}]
+  variants:
+    start: {steps: [{cmd: "npm start", expect: fail}, {cmd: "cd {d}", target: true}, {cmd: "npm start", target: true}]}
+    init: {setup: ["mkdir {d}", "cd {d}"], steps: [{cmd: "npm install", expect: fail}, {cmd: "npm init -y", target: true}, {cmd: "npm install", target: true}]}
+    initrun: {setup: ["mkdir {d}", "cd {d}"], steps: [{cmd: "npm run build", expect: fail}, {cmd: "npm init -y", target: true}]}
+- id: error_fix.npm_missing_script
+  class: error_fix
+  vars: {d: {gen: project}, s: {choice: [dev, serve, lint, watch, deploy, format]}}
+  setup: ["fx_project {d} node", "cd {d}"]
+  steps: [{cmd: "npm run {s}", expect: fail}, {cmd: "cat package.json", target: true}, {cmd: "npm start", target: true}]
+  variants:
+- id: error_fix.make_nomakefile
+  class: error_fix
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} cmake", "cd {d}"]
+  steps: [{cmd: "make", expect: fail}, {cmd: "cmake -B build", target: true}, {cmd: "cmake --build build", target: true}]
+  variants:
+    cd: {setup: ["fx_project {d} c"], steps: [{cmd: "make", expect: fail}, {cmd: "cd {d}", target: true}, {cmd: "make", target: true}]}
+    target: {setup: ["fx_project {d} c", "cd {d}"], steps: [{cmd: "make install", expect: fail}, {cmd: "make", target: true}, {cmd: "./main", target: true}]}
+- id: error_fix.cargo_cwd
+  class: error_fix
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} rust"]
+  steps: [{cmd: "cargo build", expect: fail}, {cmd: "cd {d}", target: true}, {cmd: "cargo build", target: true}]
+  variants:
+    run: {steps: [{cmd: "cargo run", expect: fail}, {cmd: "cd {d}", target: true}, {cmd: "cargo run", target: true}]}
+    new: {steps: [{cmd: "cargo new {d}", expect: fail}, {cmd: "cd {d}", target: true}, {cmd: "cargo run", target: true}]}
+- id: error_fix.cmake_source
+  class: error_fix
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} cmake", "cd {d}"]
+  steps: [{cmd: "cmake ..", expect: fail}, {cmd: "cmake -B build", target: true}]
+  variants:
+    dot: {setup: ["mkdir {d}", "cd {d}", "fx_project src cmake"], steps: [{cmd: "cmake .", expect: fail}, {cmd: "cd src", target: true}, {cmd: "cmake -B build", target: true}]}
+    build: {steps: [{cmd: "cmake --build build", expect: fail}, {cmd: "cmake -B build", target: true}, {cmd: "cmake --build build", target: true}]}
+- id: error_fix.dir_missing
+  class: error_fix
+  vars: {d: {gen: project}, d2: {gen: word}}
+  steps: [{cmd: "cd {d}", expect: fail}, {cmd: "mkdir {d}", target: true}, {cmd: "cd {d}", target: true}]
+  variants:
+    p: {steps: [{cmd: "cd {d}/{d2}", expect: fail}, {cmd: "mkdir -p {d}/{d2}", target: true}, {cmd: "cd {d}/{d2}", target: true}]}
+    touch: {steps: [{cmd: "touch {d}/{d2}.txt", expect: fail}, {cmd: "mkdir {d}", target: true}, {cmd: "touch {d}/{d2}.txt", target: true}]}
+    mkdirp: {steps: [{cmd: "mkdir {d}/{d2}", expect: fail}, {cmd: "mkdir -p {d}/{d2}", target: true}]}
+    redir: {vars: {f: {gen: file_txt}}, steps: [{cmd: "echo hi > {d}/{f}", expect: fail}, {cmd: "mkdir {d}", target: true}, {cmd: "echo hi > {d}/{f}", target: true}]}
+- id: error_fix.dir_typo
+  class: error_fix
+  vars: {d: {gen: project}, dt: {typo: d}}
+  setup: ["mkdir {d}"]
+  steps: [{cmd: "cd {dt}", expect: fail}, {cmd: "ls", target: true}, {cmd: "cd {d}", target: true}]
+  variants:
+    direct: {steps: [{cmd: "cd {dt}", expect: fail}, {cmd: "cd {d}", target: true}]}
+    ls: {steps: [{cmd: "ls {dt}", expect: fail}, {cmd: "ls", target: true}, {cmd: "ls {d}", target: true}]}
+    rm: {steps: [{cmd: "rm -r {dt}", expect: fail}, {cmd: "ls", target: true}, {cmd: "rm -r {d}", target: true}]}
+- id: error_fix.file_typo
+  class: error_fix
+  vars: {f: {gen: file_txt}, ft: {typo: f}}
+  setup: ["echo hello > {f}"]
+  steps: [{cmd: "cat {ft}", expect: fail}, {cmd: "ls", target: true}, {cmd: "cat {f}", target: true}]
+  variants:
+    direct: {steps: [{cmd: "cat {ft}", expect: fail}, {cmd: "cat {f}", target: true}]}
+    cp: {steps: [{cmd: "cp {ft} {f}.bak", expect: fail}, {cmd: "cp {f} {f}.bak", target: true}]}
+    mv: {steps: [{cmd: "mv {ft} old.txt", expect: fail}, {cmd: "ls", target: true}, {cmd: "mv {f} old.txt", target: true}]}
+    head: {steps: [{cmd: "head {ft}", expect: fail}, {cmd: "head {f}", target: true}]}
+    chmod: {steps: [{cmd: "chmod +x {ft}", expect: fail}, {cmd: "chmod +x {f}", target: true}]}
+- id: error_fix.tar_wrong
+  class: error_fix
+  vars: {n: {gen: word}, ver: {gen: version}}
+  setup: ["fx_archive {n}-{ver}.zip c", "cp /srv/dl/{n}-{ver}.zip ."]
+  steps: [{cmd: "tar xzf {n}-{ver}.zip", expect: fail}, {cmd: "unzip {n}-{ver}.zip", target: true}]
+  variants:
+    plain: {setup: ["echo not an archive at all > {n}.tar.gz"], steps: [{cmd: "tar xzf {n}.tar.gz", expect: fail}, {cmd: "cat {n}.tar.gz", target: true}]}
+    missing: {setup: ["fx_archive {n}-{ver}.tar.gz c", "cp /srv/dl/{n}-{ver}.tar.gz ."], steps: [{cmd: "tar xzf {n}-{ver}.tgz", expect: fail}, {cmd: "ls", target: true}, {cmd: "tar xzf {n}-{ver}.tar.gz", target: true}]}
+    unzip: {setup: ["fx_archive {n}-{ver}.tar.gz c", "cp /srv/dl/{n}-{ver}.tar.gz ."], steps: [{cmd: "unzip {n}-{ver}.tar.gz", expect: fail}, {cmd: "tar xzf {n}-{ver}.tar.gz", target: true}]}
+- id: error_fix.is_dir
+  class: error_fix
+  vars: {d: {gen: project}, a: {gen: project}}
+  setup: ["fx_project {d} c"]
+  steps: [{cmd: "rm {d}", expect: fail}, {cmd: "rm -r {d}", target: true}]
+  variants:
+    cp: {steps: [{cmd: "cp {d} {a}", expect: fail}, {cmd: "cp -r {d} {a}", target: true}]}
+    rmdir: {steps: [{cmd: "rmdir {d}", expect: fail}, {cmd: "rm -r {d}", target: true}]}
+    cat: {steps: [{cmd: "cat {d}", expect: fail}, {cmd: "ls {d}", target: true}]}
+- id: error_fix.not_dir
+  class: error_fix
+  vars: {f: {gen: file_txt}}
+  setup: ["echo hello > {f}"]
+  steps: [{cmd: "cd {f}", expect: fail}, {cmd: "cat {f}", target: true}]
+  variants:
+    less: {steps: [{cmd: "cd {f}", expect: fail}, {cmd: "less {f}", target: true}]}
+- id: error_fix.port_in_use
+  class: error_fix
+  vars: {p: {gen: port}, p2: {add: [p, 1]}}
+  setup: ["fx_port {p}"]
+  steps: [{cmd: "python3 -m http.server {p}", expect: fail}, {cmd: "python3 -m http.server {p2}", target: true, expect: any}]
+  variants:
+    py: {steps: [{cmd: "python -m http.server {p}", expect: fail}, {cmd: "python -m http.server {p2}", target: true, expect: any}]}
+- id: error_fix.activate_missing
+  class: error_fix
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python", "cd {d}"]
+  steps: [{cmd: "source .venv/bin/activate", expect: fail}, {cmd: "python3 -m venv .venv", target: true}, {cmd: "source .venv/bin/activate", target: true}]
+  variants:
+    venv: {steps: [{cmd: "source venv/bin/activate", expect: fail}, {cmd: "python3 -m venv venv", target: true}, {cmd: "source venv/bin/activate", target: true}]}
+    dot: {steps: [{cmd: ". .venv/bin/activate", expect: fail}, {cmd: "ls -a", target: true}, {cmd: "python3 -m venv .venv", target: true}]}
+- id: error_fix.requirements_missing
+  class: error_fix
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python", "python3 -m venv .venv", "source .venv/bin/activate"]
+  steps: [{cmd: "pip install -r requirements.txt", expect: fail}, {cmd: "cd {d}", target: true}, {cmd: "pip install -r requirements.txt", target: true}]
+  variants:
+    ls: {steps: [{cmd: "pip install -r requirements.txt", expect: fail}, {cmd: "ls", target: true}, {cmd: "cd {d}", target: true}]}

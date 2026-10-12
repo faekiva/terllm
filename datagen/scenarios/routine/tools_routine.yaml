@@ -1,0 +1,92 @@
+- id: routine.docker_build_run
+  class: routine
+  vars: {img: {gen: project}, p: {gen: port}, nm: {gen: word}}
+  setup: ["touch Dockerfile"]
+  steps: [{cmd: "docker build -t {img} ."}, {cmd: "docker run -p {p}:{p} {img}", target: true}]
+  variants:
+    detach: {steps: [{cmd: "docker build -t {img} ."}, {cmd: "docker run -d --name {nm} -p {p}:{p} {img}", target: true}, {cmd: "docker ps", target: true}, {cmd: "docker logs {nm}", target: true}]}
+    stop: {steps: [{cmd: "docker ps"}, {cmd: "docker stop {nm}", target: true}, {cmd: "docker rm {nm}", target: true}]}
+    exec: {steps: [{cmd: "docker ps"}, {cmd: "docker exec -it {nm} bash", target: true}]}
+    images: {steps: [{cmd: "docker images", target: true}, {cmd: "docker rmi {img}", target: true}]}
+    prune: {steps: [{cmd: "docker ps -a", target: true}, {cmd: "docker system prune -f", target: true}]}
+    sudo: {steps: [{cmd: "sudo docker ps", target: true}, {cmd: "sudo docker logs {nm}", target: true}]}
+    pull: {steps: [{cmd: "docker pull {img}:latest", target: true}, {cmd: "docker run --rm {img}:latest", target: true}]}
+- id: routine.docker_compose
+  class: routine
+  vars: {nm: {gen: word}}
+  setup: ["touch docker-compose.yml"]
+  steps: [{cmd: "docker compose up -d", target: true}, {cmd: "docker compose ps", target: true}, {cmd: "docker compose logs -f", target: true}]
+  variants:
+    down: {steps: [{cmd: "docker compose ps"}, {cmd: "docker compose down", target: true}]}
+    build: {steps: [{cmd: "docker compose build", target: true}, {cmd: "docker compose up", target: true}]}
+    restart: {steps: [{cmd: "docker compose restart {nm}", target: true}, {cmd: "docker compose logs {nm}", target: true}]}
+    old: {steps: [{cmd: "docker-compose up -d", target: true}, {cmd: "docker-compose logs", target: true}]}
+- id: routine.kubectl
+  class: routine
+  vars: {pod: {gen: project}, nm: {gen: word}}
+  setup: ["touch deployment.yaml service.yaml"]
+  steps: [{cmd: "kubectl apply -f deployment.yaml", target: true}, {cmd: "kubectl get pods", target: true}, {cmd: "kubectl logs {pod}", target: true}]
+  variants:
+    describe: {steps: [{cmd: "kubectl get pods"}, {cmd: "kubectl describe pod {pod}", target: true}]}
+    svc: {steps: [{cmd: "kubectl apply -f service.yaml", target: true}, {cmd: "kubectl get svc", target: true}]}
+    rollout: {steps: [{cmd: "kubectl rollout status deployment/{nm}", target: true}, {cmd: "kubectl get pods -w", target: true}]}
+    delete: {steps: [{cmd: "kubectl get pods"}, {cmd: "kubectl delete pod {pod}", target: true}]}
+    ns: {steps: [{cmd: "kubectl get ns", target: true}, {cmd: "kubectl get pods -n {nm}", target: true}]}
+    exec: {steps: [{cmd: "kubectl get pods"}, {cmd: "kubectl exec -it {pod} -- sh", target: true}]}
+- id: routine.systemctl
+  class: routine
+  vars: {svc: {choice: [nginx, postgresql, redis-server, docker, ssh, mysql, cron]}}
+  steps: [{cmd: "sudo systemctl status {svc}", target: true}, {cmd: "sudo systemctl restart {svc}", target: true}, {cmd: "journalctl -u {svc} -n 50", target: true}]
+  variants:
+    enable: {steps: [{cmd: "sudo systemctl enable --now {svc}", target: true}, {cmd: "systemctl status {svc}", target: true}]}
+    stop: {steps: [{cmd: "systemctl status {svc}"}, {cmd: "sudo systemctl stop {svc}", target: true}]}
+    reload: {steps: [{cmd: "sudo systemctl daemon-reload", target: true}, {cmd: "sudo systemctl restart {svc}", target: true}]}
+    active: {steps: [{cmd: "systemctl is-active {svc}", target: true}, {cmd: "sudo systemctl start {svc}", target: true}]}
+- id: routine.ssh
+  class: routine
+  vars: {u: {gen: user}, h: {choice: [prod-1, staging, build-server, 10.0.0.12, dev-box, example.com]}, f: {gen: file_txt}}
+  setup: ["touch {f}"]
+  steps: [{cmd: "ssh {u}@{h}", target: true}]
+  variants:
+    scp: {steps: [{cmd: "scp {f} {u}@{h}:~/", target: true}, {cmd: "ssh {u}@{h}", target: true}]}
+    key: {steps: [{cmd: "ssh -i ~/.ssh/id_ed25519 {u}@{h}", target: true}]}
+    port: {steps: [{cmd: "ssh -p 2222 {u}@{h}", target: true}]}
+    scpr: {steps: [{cmd: "scp {u}@{h}:~/{f} .", target: true}, {cmd: "cat {f}", target: true}]}
+- id: routine.npm_dev
+  class: routine
+  vars: {d: {gen: project}, p: {gen: npm}}
+  setup: ["fx_project {d} node git", "cd {d}", "npm install"]
+  steps: [{cmd: "npm run build", target: true}, {cmd: "npm test", target: true}, {cmd: "npm start", target: true}]
+  variants:
+    add: {steps: [{cmd: "npm install {p}", target: true}, {cmd: "git status -s", target: true}, {cmd: "npm run build", target: true}]}
+    dev: {steps: [{cmd: "npm install -D {p}", target: true}, {cmd: "npm test", target: true}]}
+    pnpm: {steps: [{cmd: "pnpm add {p}", target: true}, {cmd: "pnpm build", target: true}]}
+    node: {steps: [{cmd: "node index.js", target: true}, {cmd: "node test.js", target: true}]}
+    rm: {steps: [{cmd: "rm -rf node_modules", target: true}, {cmd: "npm install", target: true}]}
+- id: routine.pip_dev
+  class: routine
+  vars: {d: {gen: project}, p: {gen: pip}}
+  setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate", "pip install -r requirements.txt"]
+  steps: [{cmd: "pip install {p}", target: true}, {cmd: "pip freeze > requirements.txt", target: true}, {cmd: "python app.py", target: true}]
+  variants:
+    list: {steps: [{cmd: "pip list", target: true}, {cmd: "pip install {p}", target: true}]}
+    pytest: {steps: [{cmd: "pip install pytest", target: true}, {cmd: "python -m pytest", target: true}]}
+    black: {steps: [{cmd: "pip install black", target: true}, {cmd: "black .", target: true}]}
+    ruff: {steps: [{cmd: "pip install ruff", target: true}, {cmd: "ruff check .", target: true}]}
+    deact: {steps: [{cmd: "python app.py", target: true}, {cmd: "deactivate", target: true}]}
+- id: routine.cargo_dev
+  class: routine
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} rust git", "cd {d}"]
+  steps: [{cmd: "cargo build", target: true}, {cmd: "cargo test", target: true}, {cmd: "cargo run", target: true}]
+  variants:
+    check: {steps: [{cmd: "cargo check", target: true}, {cmd: "cargo build --release", target: true}]}
+    status: {steps: [{cmd: "cargo build"}, {cmd: "git status", target: true}]}
+- id: routine.make_dev
+  class: routine
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} c", "cd {d}"]
+  steps: [{cmd: "make", target: true}, {cmd: "./main", target: true}, {cmd: "make clean", target: true}]
+  variants:
+    gcc: {steps: [{cmd: "gcc -o main main.c", target: true}, {cmd: "./main", target: true}]}
+    again: {steps: [{cmd: "make", target: true}, {cmd: "make", target: true}]}

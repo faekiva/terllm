@@ -1,0 +1,61 @@
+- id: nav_noise.explore
+  class: nav_noise
+  vars: {a: {gen: word}, b: {gen: word}, c: {gen: word}, f: {gen: file_txt}}
+  setup: ["mkdir -p proj/{a}/{b}", "mkdir proj/{c}", "touch proj/{f}", "touch proj/{a}/{f}"]
+  steps: [{cmd: "ls"}, {cmd: "cd proj", target: true}, {cmd: "ls", target: true}, {cmd: "cd {a}", target: true}, {cmd: "ls", target: true}, {cmd: "cd ..", target: true}, {cmd: "cd {c}", target: true}]
+  variants:
+    back: {steps: [{cmd: "cd proj/{a}/{b}", target: true}, {cmd: "pwd", target: true}, {cmd: "cd ../..", target: true}, {cmd: "ls", target: true}]}
+    dash: {steps: [{cmd: "cd proj/{a}"}, {cmd: "cd ~"}, {cmd: "cd -", target: true}, {cmd: "ls", target: true}]}
+    home: {steps: [{cmd: "cd proj/{c}"}, {cmd: "cd", target: true}, {cmd: "pwd", target: true}]}
+    ll: {steps: [{cmd: "ls -la proj", target: true}, {cmd: "cd proj", target: true}, {cmd: "ls -l", target: true}]}
+    tree: {steps: [{cmd: "ls proj", target: true}, {cmd: "ls proj/{a}", target: true}, {cmd: "ls proj/{a}/{b}", target: true}]}
+- id: nav_noise.read_files
+  class: nav_noise
+  vars: {f: {gen: file_txt}, g: {gen: file_md}, m: {gen: msg}}
+  setup: ["echo \"{m}\" > {f}", "echo \"# notes\" > {g}", "echo more >> {f}"]
+  steps: [{cmd: "ls"}, {cmd: "cat {f}", target: true}, {cmd: "cat {g}", target: true}]
+  variants:
+    less: {steps: [{cmd: "ls -la"}, {cmd: "less {f}", target: true}, {cmd: "head -n 1 {g}", target: true}]}
+    wc: {steps: [{cmd: "wc -l {f}", target: true}, {cmd: "tail -n 1 {f}", target: true}]}
+    grep: {steps: [{cmd: "grep notes {g}", target: true}, {cmd: "grep -rn more .", target: true}, {cmd: "cat {f}", target: true}]}
+    both: {steps: [{cmd: "cat {f} {g}", target: true}]}
+- id: nav_noise.repeat
+  class: nav_noise
+  vars: {d: {gen: project}, f: {gen: file_txt}}
+  setup: ["fx_project {d} python git", "cd {d}"]
+  steps: [{cmd: "git status"}, {cmd: "ls"}, {cmd: "git status", target: true}, {cmd: "ls", target: true}]
+  variants:
+    ls3: {steps: [{cmd: "ls"}, {cmd: "ls"}, {cmd: "ls -la", target: true}]}
+    pwd: {steps: [{cmd: "pwd"}, {cmd: "ls"}, {cmd: "pwd", target: true}]}
+    clear: {steps: [{cmd: "ls"}, {cmd: "clear", target: true}, {cmd: "ls", target: true}]}
+- id: nav_noise.abandoned
+  class: nav_noise
+  vars: {p: {gen: port}, d: {gen: project}}
+  setup: ["fx_project {d} python", "cd {d}"]
+  steps: [{cmd: "python3 -m http.server {p}", expect: any}, {cmd: "ls", target: true}, {cmd: "python3 -m http.server {p}", target: true, expect: any}]
+  variants:
+    other: {vars: {p2: {add: [p, 1]}}, steps: [{cmd: "python3 -m http.server {p}", expect: any}, {cmd: "python3 -m http.server {p2}", target: true, expect: any}]}
+    tail: {setup: ["mkdir -p {d}", "cd {d}", "echo log > app.log"], steps: [{cmd: "tail -f app.log", expect: any}, {cmd: "cat app.log", target: true}]}
+- id: nav_noise.find_grep
+  class: nav_noise
+  vars: {d: {gen: project}, kw: {choice: [TODO, import, main, hello, requests]}}
+  setup: ["fx_project {d} python", "cd {d}"]
+  steps: [{cmd: "find . -name \"*.py\"", target: true}, {cmd: "grep -rn \"{kw}\" .", expect: any, target: true}, {cmd: "cat app.py", target: true}]
+  variants:
+    findf: {steps: [{cmd: "find . -type f", target: true}, {cmd: "cat README.md", target: true}]}
+    wc: {steps: [{cmd: "ls tests", target: true}, {cmd: "wc -l app.py", target: true}]}
+- id: nav_noise.mistakes
+  class: nav_noise
+  vars: {d: {gen: word}, f: {gen: file_txt}}
+  steps: [{cmd: "mkdir {d}"}, {cmd: "ls", target: true}, {cmd: "rm -r {d}", target: true}, {cmd: "ls", target: true}]
+  variants:
+    touch: {steps: [{cmd: "touch {f}"}, {cmd: "ls", target: true}, {cmd: "rm {f}", target: true}]}
+    mv: {setup: ["touch {f}"], steps: [{cmd: "mv {f} {d}.txt", target: true}, {cmd: "ls", target: true}, {cmd: "mv {d}.txt {f}", target: true}]}
+    cp: {setup: ["touch {f}"], steps: [{cmd: "cp {f} {f}.bak", target: true}, {cmd: "ls", target: true}, {cmd: "rm {f}.bak", target: true}]}
+- id: nav_noise.sysinfo
+  class: nav_noise
+  vars: {d: {gen: word}}
+  steps: [{cmd: "df -h", target: true}, {cmd: "du -sh .", target: true}, {cmd: "ls -la", target: true}]
+  variants:
+    who: {steps: [{cmd: "whoami", target: true}, {cmd: "pwd", target: true}, {cmd: "uname -a", target: true}]}
+    ps: {steps: [{cmd: "ps aux", target: true}, {cmd: "free -h", target: true}]}

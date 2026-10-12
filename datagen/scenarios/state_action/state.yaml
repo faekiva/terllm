@@ -1,0 +1,145 @@
+- id: state_action.npm_install
+  class: state_action
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} node", "cd {d}"]
+  steps: [{cmd: "ls"}, {cmd: "npm install", target: true}]
+  variants:
+    noctx: {steps: [{cmd: "npm install", target: true}]}
+    pnpm: {setup: ["fx_project {d} node", "cd {d}", "touch pnpm-lock.yaml"], steps: [{cmd: "ls -a"}, {cmd: "pnpm install", target: true}]}
+    yarn: {setup: ["fx_project {d} node", "cd {d}", "touch yarn.lock"], steps: [{cmd: "ls -a"}, {cmd: "yarn install", target: true}]}
+    cat: {steps: [{cmd: "cat package.json"}, {cmd: "npm install", target: true}]}
+    then_run: {setup: ["fx_project {d} node", "cd {d}", "npm install"], steps: [{cmd: "ls"}, {cmd: "npm run build", target: true}]}
+    then_start: {setup: ["fx_project {d} node", "cd {d}", "npm install", "npm run build"], steps: [{cmd: "ls"}, {cmd: "npm start", target: true}]}
+    node_dist: {setup: ["fx_project {d} node", "cd {d}", "npm install", "npm run build"], steps: [{cmd: "ls dist"}, {cmd: "node dist/bundle.js", target: true}]}
+- id: state_action.py_env
+  class: state_action
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python", "cd {d}"]
+  steps: [{cmd: "ls"}, {cmd: "python3 -m venv .venv", target: true}]
+  variants:
+    activate: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv"], steps: [{cmd: "ls -a"}, {cmd: "source .venv/bin/activate", target: true}]}
+    install: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate"], steps: [{cmd: "ls"}, {cmd: "pip install -r requirements.txt", target: true}]}
+    run: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate", "pip install -r requirements.txt"], steps: [{cmd: "ls"}, {cmd: "python app.py", target: true}]}
+    test: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate", "pip install -r requirements.txt pytest"], steps: [{cmd: "ls tests"}, {cmd: "pytest", target: true}]}
+    cat: {steps: [{cmd: "cat requirements.txt"}, {cmd: "python3 -m venv .venv", target: true}]}
+    nov: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv venv"], steps: [{cmd: "ls"}, {cmd: "source venv/bin/activate", target: true}]}
+    deactivate: {setup: ["fx_project {d} python", "cd {d}", "python3 -m venv .venv", "source .venv/bin/activate"], steps: [{cmd: "pip list"}, {cmd: "deactivate", target: true}]}
+- id: state_action.c_build
+  class: state_action
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} c", "cd {d}"]
+  steps: [{cmd: "ls"}, {cmd: "make", target: true}]
+  variants:
+    run: {setup: ["fx_project {d} c", "cd {d}", "make"], steps: [{cmd: "ls"}, {cmd: "./main", target: true}]}
+    clean: {setup: ["fx_project {d} c", "cd {d}", "make"], steps: [{cmd: "ls"}, {cmd: "make clean", target: true}]}
+    cmake: {setup: ["fx_project {d} cmake", "cd {d}"], steps: [{cmd: "ls"}, {cmd: "cmake -B build", target: true}]}
+    cmake_build: {setup: ["fx_project {d} cmake", "cd {d}", "cmake -B build"], steps: [{cmd: "ls build"}, {cmd: "cmake --build build", target: true}]}
+    cmake_run: {setup: ["fx_project {d} cmake", "cd {d}", "cmake -B build", "cmake --build build"], steps: [{cmd: "ls build"}, {cmd: "./build/app", target: true}]}
+    cmake_in: {setup: ["fx_project {d} cmake", "cd {d}", "mkdir build", "cd build"], steps: [{cmd: "ls"}, {cmd: "cmake ..", target: true}]}
+    cmake_make: {setup: ["fx_project {d} cmake", "cd {d}", "mkdir build", "cd build", "cmake .."], steps: [{cmd: "ls"}, {cmd: "make", target: true}]}
+- id: state_action.cargo
+  class: state_action
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} rust", "cd {d}"]
+  steps: [{cmd: "ls"}, {cmd: "cargo build", target: true}]
+  variants:
+    run: {setup: ["fx_project {d} rust", "cd {d}", "cargo build"], steps: [{cmd: "ls"}, {cmd: "cargo run", target: true}]}
+    test: {setup: ["fx_project {d} rust", "cd {d}", "cargo build"], steps: [{cmd: "ls"}, {cmd: "cargo test", target: true}]}
+    clean: {setup: ["fx_project {d} rust", "cd {d}", "cargo build"], steps: [{cmd: "ls"}, {cmd: "cargo clean", target: true}]}
+- id: state_action.git_modified
+  class: state_action
+  vars: {d: {gen: project}, f: {choice: [README.md, app.py, requirements.txt]}, m: {gen: msg}}
+  setup: ["fx_project {d} python git", "cd {d}", "echo '# edit' >> {f}"]
+  steps: [{cmd: "git status"}, {cmd: "git add {f}", target: true}]
+  variants:
+    all: {steps: [{cmd: "git status -s"}, {cmd: "git add .", target: true}]}
+    A: {steps: [{cmd: "git status"}, {cmd: "git add -A", target: true}]}
+    commit_a: {steps: [{cmd: "git status -s"}, {cmd: "git commit -am \"{m}\"", target: true}]}
+    stash: {steps: [{cmd: "git status"}, {cmd: "git stash", target: true}]}
+    restore: {steps: [{cmd: "git status"}, {cmd: "git restore {f}", target: true}]}
+    diff: {steps: [{cmd: "git status -s"}, {cmd: "git diff", target: true}]}
+    checkout_file: {steps: [{cmd: "git status"}, {cmd: "git checkout -- {f}", target: true}]}
+- id: state_action.git_staged
+  class: state_action
+  vars: {d: {gen: project}, f: {choice: [README.md, app.py]}, m: {gen: msg}}
+  setup: ["fx_project {d} python git", "cd {d}", "echo '# edit' >> {f}", "git add {f}"]
+  steps: [{cmd: "git status"}, {cmd: "git commit -m \"{m}\"", target: true}]
+  variants:
+    short: {steps: [{cmd: "git status -s"}, {cmd: "git commit -m \"{m}\"", target: true}]}
+    unstage: {steps: [{cmd: "git status"}, {cmd: "git restore --staged {f}", target: true}]}
+    reset: {steps: [{cmd: "git status -s"}, {cmd: "git reset", target: true}]}
+- id: state_action.git_untracked
+  class: state_action
+  vars: {d: {gen: project}, f: {gen: file_py}}
+  setup: ["fx_project {d} python git", "cd {d}", "echo 'print(1)' > {f}"]
+  steps: [{cmd: "git status"}, {cmd: "git add {f}", target: true}]
+  variants:
+    ls: {steps: [{cmd: "ls"}, {cmd: "git add {f}", target: true}]}
+    dot: {steps: [{cmd: "git status -s"}, {cmd: "git add .", target: true}]}
+    run: {steps: [{cmd: "ls"}, {cmd: "python {f}", target: true}]}
+- id: state_action.git_ahead
+  class: state_action
+  vars: {u: {gen: user}, rp: {gen: project}, m: {gen: msg}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "echo x >> README.md", "git commit -q -am wip"]
+  steps: [{cmd: "git status"}, {cmd: "git push", target: true}]
+  variants:
+    short: {steps: [{cmd: "git status -sb"}, {cmd: "git push", target: true}]}
+    log: {steps: [{cmd: "git log --oneline -3"}, {cmd: "git push", target: true}]}
+- id: state_action.git_behind
+  class: state_action
+  vars: {u: {gen: user}, rp: {gen: project}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp} a", "git clone -q https://github.com/{u}/{rp} b", "cd b", "echo b > b.txt", "git add .", "git commit -q -m b", "git push -q", "cd ../a", "git fetch -q"]
+  steps: [{cmd: "git status"}, {cmd: "git pull", target: true}]
+  variants:
+    short: {steps: [{cmd: "git status -sb"}, {cmd: "git pull", target: true}]}
+    merge: {steps: [{cmd: "git status"}, {cmd: "git merge origin/main", target: true}]}
+- id: state_action.git_new_branch
+  class: state_action
+  vars: {u: {gen: user}, rp: {gen: project}, br: {gen: branch}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "git checkout -q -b {br}", "echo x >> README.md", "git commit -q -am wip"]
+  steps: [{cmd: "git status"}, {cmd: "git push -u origin {br}", target: true}]
+  variants:
+    branch: {steps: [{cmd: "git branch"}, {cmd: "git push --set-upstream origin {br}", target: true}]}
+    ctx: {steps: [{cmd: "git branch --show-current"}, {cmd: "git push -u origin {br}", target: true}]}
+    back: {setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}", "git checkout -q -b {br}", "echo x >> README.md", "git commit -q -am wip", "git push -q -u origin {br}"], steps: [{cmd: "git status"}, {cmd: "git checkout main", target: true}]}
+- id: state_action.git_conflict
+  class: state_action
+  vars: {br: {gen: branch}}
+  setup: ["fx_project r docs git", "cd r", "echo base > conf.txt", "git add .", "git commit -q -m base", "git checkout -q -b {br}", "echo theirs > conf.txt", "git commit -q -am t", "git checkout -q main", "echo ours > conf.txt", "git commit -q -am o", "git merge {br} || true"]
+  steps: [{cmd: "git status"}, {cmd: "git add conf.txt", target: true}]
+  variants:
+    abort: {steps: [{cmd: "git status -s"}, {cmd: "git merge --abort", target: true}]}
+    cat: {steps: [{cmd: "git status"}, {cmd: "cat conf.txt", target: true}]}
+    done: {setup: ["fx_project r docs git", "cd r", "echo base > conf.txt", "git add .", "git commit -q -m base", "git checkout -q -b {br}", "echo theirs > conf.txt", "git commit -q -am t", "git checkout -q main", "echo ours > conf.txt", "git commit -q -am o", "git merge {br} || true", "echo fixed > conf.txt", "git add conf.txt"], steps: [{cmd: "git status"}, {cmd: "git commit --no-edit", target: true}]}
+- id: state_action.archive_here
+  class: state_action
+  vars: {n: {gen: word}, ver: {gen: version}, lang: {choice: [c, node, python]}}
+  setup: ["fx_archive {n}-{ver}.tar.gz {lang}", "cp /srv/dl/{n}-{ver}.tar.gz ."]
+  steps: [{cmd: "ls"}, {cmd: "tar xzf {n}-{ver}.tar.gz", target: true}]
+  variants:
+    zip: {setup: ["fx_archive {n}-{ver}.zip {lang}", "cp /srv/dl/{n}-{ver}.zip ."], steps: [{cmd: "ls"}, {cmd: "unzip {n}-{ver}.zip", target: true}]}
+    cd: {setup: ["fx_archive {n}-{ver}.tar.gz {lang}", "cp /srv/dl/{n}-{ver}.tar.gz .", "tar xzf {n}-{ver}.tar.gz"], steps: [{cmd: "ls"}, {cmd: "cd {n}-{ver}", target: true}]}
+    xz: {setup: ["fx_archive {n}-{ver}.tar.xz {lang}", "cp /srv/dl/{n}-{ver}.tar.xz ."], steps: [{cmd: "ls"}, {cmd: "tar xf {n}-{ver}.tar.xz", target: true}]}
+    rm: {setup: ["fx_archive {n}-{ver}.tar.gz {lang}", "cp /srv/dl/{n}-{ver}.tar.gz .", "tar xzf {n}-{ver}.tar.gz", "cd {n}-{ver}"], steps: [{cmd: "ls"}, {cmd: "cd ..", target: true}, {cmd: "rm {n}-{ver}.tar.gz", target: true}]}
+- id: state_action.gitignore
+  class: state_action
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python git", "cd {d}", "python3 -m venv .venv"]
+  steps: [{cmd: "git status"}, {cmd: "echo \".venv/\" >> .gitignore", target: true}]
+  variants:
+    node: {setup: ["fx_project {d} node git", "cd {d}", "echo '/dist' > .gitignore", "git add .", "git commit -q -m ignore", "npm install"], steps: [{cmd: "git status -s"}, {cmd: "echo \"node_modules/\" >> .gitignore", target: true}]}
+    add: {setup: ["fx_project {d} python git", "cd {d}", "python3 -m venv .venv", "echo \".venv/\" >> .gitignore"], steps: [{cmd: "git status -s"}, {cmd: "git add .gitignore", target: true}]}
+- id: state_action.readme
+  class: state_action
+  vars: {u: {gen: user}, rp: {gen: project}, lang: {choice: [python, node, c, rust, docs]}}
+  setup: ["fx_remote {u}/{rp} {lang}", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "ls"}, {cmd: "cat README.md", target: true}]
+  variants:
+    less: {steps: [{cmd: "ls -la"}, {cmd: "less README.md", target: true}]}
+    log: {steps: [{cmd: "ls"}, {cmd: "git log --oneline", target: true}]}
+    branches: {steps: [{cmd: "ls"}, {cmd: "git branch -a", target: true}]}
+- id: state_action.chmod_script
+  class: state_action
+  vars: {f: {gen: file_sh}}
+  setup: ["echo 'echo hi' > {f}"]
+  steps: [{cmd: "ls -l"}, {cmd: "chmod +x {f}", target: true}, {cmd: "./{f}", target: true}]

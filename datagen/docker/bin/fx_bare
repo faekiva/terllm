@@ -1,0 +1,3 @@
+#!/bin/sh
+# fx_bare USER/REPO -> empty bare repo at /srv/git/USER/REPO.git
+mkdir -p "/srv/git/$(dirname "$1")" && git init -q --bare -b main "/srv/git/$1.git"

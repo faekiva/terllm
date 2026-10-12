@@ -146,19 +146,12 @@ def c_clone(sim, args):
         return sim.e("git.clone.exists", dir=name)
     if not sim.can_write_dir(posixpath.dirname(dest)):
         raise Unsupported("clone denied")
-    repo = G.clone(sim, url, dest)
+    repo = G.clone(sim, url, dest, branch)
     if repo is None:
         raise Unsupported("clone source unknown")
     repo.urls = {"origin": url}
-    if branch:
-        if f"origin/{branch}" not in repo.remote_refs:
-            raise Unsupported("clone -b missing")
-        repo.head = branch
-        repo.branches[branch] = repo.remote_refs[f"origin/{branch}"]
-        repo.upstream[branch] = f"origin/{branch}"
-        old = repo.index
-        repo.index = dict(repo.tree(repo.branches[branch]))
-        G.write_tree(sim, dest, repo.index, old)
+    if branch and repo.head != branch:
+        raise Unsupported("clone -b missing")
     return R(0, "", f"Cloning into '{name}'...\n")
 
 
@@ -349,10 +342,11 @@ def c_switch(sim, args, root, repo):
         name = args[1]
         if name in repo.branches and args[0] == "-c":
             return sim.e("git.branch.exists", name=name)
-        err = switch_to(sim, root, repo, name, create_from=repo.head_id())
+        cid = repo.head_id()
+        err = switch_to(sim, root, repo, name, create_from=cid)
         if err:
             return err
-        repo.branches[name] = repo.head_id()
+        repo.branches[name] = cid
         return R(0, "", f"Switched to a new branch '{name}'\n")
     if len(args) != 1 or args[0].startswith("-"):
         raise Unsupported("switch form")
@@ -449,11 +443,20 @@ def c_remote(sim, args, root, repo):
         for b in [b for b, u in repo.upstream.items() if u.startswith(args[1] + "/")]:
             del repo.upstream[b]
         return R(0)
+    if args[0] == "set-url":
+        if args[1] not in repo.remotes:
+            raise Unsupported("set-url missing")
+        return c_remote(sim, ["add", args[1] + "__tmp", args[2]], root, repo) and (_swap(repo, args[1]) or R(0))
     if args[0] == "get-url":
         if args[1] not in repo.remotes:
             raise Unsupported("get-url missing")
         return R(0, url_of(repo, args[1]) + "\n")
     raise Unsupported(f"remote {args[0]}")
+
+
+def _swap(repo, name):
+    repo.remotes[name] = repo.remotes.pop(name + "__tmp")
+    repo.urls[name] = repo.urls.pop(name + "__tmp")
 
 
 def c_fetch(sim, args, root, repo):
@@ -493,7 +496,7 @@ def c_push(sim, args, root, repo):
         raise Unsupported("push to missing remote")
     cid = repo.branches.get(branch)
     if cid is None:
-        return sim.e("git.push.nosrc", branch=branch)
+        return sim.e("git.push.nosrc", branch=branch, url=url_of(repo, remote))
     cur = rr.branches.get(branch)
     if cur == cid:
         if setup:
@@ -647,7 +650,10 @@ def c_stash(sim, args, root, repo):
     if sub in ("pop", "apply"):
         if not repo.stash:
             return sim.e("git.stash.empty")
-        mods, unt, _ = repo.stash[-1] if sub == "apply" else repo.stash.pop()
+        mods, unt, shead = repo.stash[-1] if sub == "apply" else repo.stash.pop()
+        base, cur = repo.tree(shead), repo.tree(repo.head_id())
+        if any(base.get(p) != cur.get(p) for p in mods):
+            raise Unsupported("stash pop conflict")
         for p, v in {**mods, **unt}.items():
             if v is None:
                 parent, name = sim.fs.parent(f"{root}/{p}")
@@ -757,6 +763,13 @@ def c_rm(sim, args, root, repo):
             return sim.e("git.rm.nomatch", path=p)
         if len(hits) > 1 and not any(x in ("-r",) for x in args):
             raise Unsupported("rm dir without -r")
+        wt = G.worktree(sim, root)
+        head = repo.tree(repo.head_id())
+        for q in hits:
+            if "-f" not in args and q in wt and wt[q] != repo.index[q] and not cached:
+                return sim.e("git.rm.modified", path=q)
+            if "-f" not in args and repo.index[q] != head.get(q) and not cached:
+                raise Unsupported("git rm staged changes")
         for q in hits:
             del repo.index[q]
             if not cached:

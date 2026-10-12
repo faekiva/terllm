@@ -23,4 +23,7 @@ def error(key, shell, **params):
     e = c.get(f"{key}|{shell}") or c.get(f"{key}|any")
     if e is None:
         raise Unsupported(f"no harvested error for {key}|{shell}")
-    return e["exit"], e["stdout"].format(**params), e["stderr"].format(**params)
+    try:
+        return e["exit"], e["stdout"].format(**params), e["stderr"].format(**params)
+    except KeyError as k:
+        raise Unsupported(f"missing param {k} for {key}")

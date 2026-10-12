@@ -1,0 +1,114 @@
+- id: created_use.mkdir_cd
+  class: created_use
+  vars: {d: {gen: project}}
+  steps: [{cmd: "mkdir {d}"}, {cmd: "cd {d}", target: true}]
+  variants:
+    p: {steps: [{cmd: "mkdir -p {d}/src"}, {cmd: "cd {d}", target: true}]}
+    deep: {vars: {d2: {gen: word}}, steps: [{cmd: "mkdir -p {d}/{d2}"}, {cmd: "cd {d}/{d2}", target: true}]}
+    sub: {vars: {d2: {gen: word}}, steps: [{cmd: "mkdir -p {d}/{d2}"}, {cmd: "cd {d}", target: true}, {cmd: "ls", target: true}]}
+- id: created_use.mkdir_git_init
+  class: created_use
+  vars: {d: {gen: project}}
+  steps: [{cmd: "mkdir {d}"}, {cmd: "cd {d}", target: true}, {cmd: "git init", target: true}]
+  variants:
+    readme: {steps: [{cmd: "mkdir {d}"}, {cmd: "cd {d}", target: true}, {cmd: "git init"}, {cmd: "touch README.md", target: true}]}
+    add: {steps: [{cmd: "mkdir {d}"}, {cmd: "cd {d}"}, {cmd: "git init"}, {cmd: "touch README.md"}, {cmd: "git add README.md", target: true}]}
+- id: created_use.clone_cd
+  class: created_use
+  vars: {u: {gen: user}, rp: {gen: project}, lang: {choice: [python, node, c, rust, cmake, docs]}}
+  setup: ["fx_remote {u}/{rp} {lang}"]
+  steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}", target: true}]
+  variants:
+    ssh: {steps: [{cmd: "git clone git@github.com:{u}/{rp}.git"}, {cmd: "cd {rp}", target: true}]}
+    named: {vars: {nm: {gen: word}}, steps: [{cmd: "git clone https://github.com/{u}/{rp}.git {nm}"}, {cmd: "cd {nm}", target: true}]}
+    gitlab: {steps: [{cmd: "git clone https://gitlab.com/{u}/{rp}.git"}, {cmd: "cd {rp}", target: true}]}
+    ls: {steps: [{cmd: "git clone https://github.com/{u}/{rp}"}, {cmd: "cd {rp}"}, {cmd: "ls", target: true}]}
+- id: created_use.clone_branch
+  class: created_use
+  vars: {u: {gen: user}, rp: {gen: project}, br: {choice: [dev, develop, staging, next]}}
+  setup: ["fx_remote {u}/{rp} python {br}"]
+  steps: [{cmd: "git clone -b {br} https://github.com/{u}/{rp}"}, {cmd: "cd {rp}", target: true}, {cmd: "git branch", target: true}]
+- id: created_use.touch_run
+  class: created_use
+  vars: {f: {gen: file_py}}
+  steps: [{cmd: "touch {f}"}, {cmd: "python {f}", target: true}]
+  variants:
+    js: {vars: {f: {gen: file_js}}, steps: [{cmd: "touch {f}"}, {cmd: "node {f}", target: true}]}
+    sh: {vars: {f: {gen: file_sh}}, steps: [{cmd: "touch {f}"}, {cmd: "chmod +x {f}", target: true}, {cmd: "./{f}", target: true}]}
+    py3: {steps: [{cmd: "touch {f}"}, {cmd: "python3 {f}", target: true}]}
+- id: created_use.echo_cat
+  class: created_use
+  vars: {f: {gen: file_txt}, m: {gen: msg}}
+  steps: [{cmd: "echo \"{m}\" > {f}"}, {cmd: "cat {f}", target: true}]
+  variants:
+    append: {setup: ["echo first > {f}"], steps: [{cmd: "echo \"{m}\" >> {f}"}, {cmd: "cat {f}", target: true}]}
+    wc: {steps: [{cmd: "echo \"{m}\" > {f}"}, {cmd: "wc -l {f}", target: true}]}
+    less: {steps: [{cmd: "echo \"{m}\" > {f}"}, {cmd: "less {f}", target: true}]}
+- id: created_use.cp_dir_cd
+  class: created_use
+  vars: {a: {gen: project}, b: {gen: project}, lang: {choice: [python, node, c]}}
+  setup: ["fx_project {a} {lang}"]
+  steps: [{cmd: "cp -r {a} {b}"}, {cmd: "cd {b}", target: true}]
+  variants:
+    mv: {steps: [{cmd: "mv {a} {b}"}, {cmd: "cd {b}", target: true}]}
+- id: created_use.mkdir_mv
+  class: created_use
+  vars: {d: {gen: word}, f: {gen: file_txt}}
+  setup: ["touch {f}"]
+  steps: [{cmd: "mkdir {d}"}, {cmd: "mv {f} {d}/", target: true}]
+  variants:
+    cp: {steps: [{cmd: "mkdir {d}"}, {cmd: "cp {f} {d}/", target: true}]}
+    touch: {steps: [{cmd: "mkdir {d}"}, {cmd: "touch {d}/{f}", target: true}, {cmd: "ls {d}", target: true}]}
+- id: created_use.download_extract
+  class: created_use
+  vars: {n: {gen: word}, ver: {gen: version}, lang: {choice: [c, node, python]}}
+  setup: ["fx_archive {n}-{ver}.tar.gz {lang}"]
+  steps: [{cmd: "wget https://example.org/dl/{n}-{ver}.tar.gz"}, {cmd: "tar xzf {n}-{ver}.tar.gz", target: true}]
+  variants:
+    curl: {steps: [{cmd: "curl -O https://example.org/dl/{n}-{ver}.tar.gz"}, {cmd: "tar xzf {n}-{ver}.tar.gz", target: true}]}
+    curlL: {steps: [{cmd: "curl -LO https://github.com/dl/{n}-{ver}.tar.gz"}, {cmd: "tar -xzf {n}-{ver}.tar.gz", target: true}]}
+    verbose: {steps: [{cmd: "wget https://example.org/dl/{n}-{ver}.tar.gz"}, {cmd: "tar -xvzf {n}-{ver}.tar.gz", target: true}]}
+    zip: {setup: ["fx_archive {n}-{ver}.zip {lang}"], steps: [{cmd: "wget https://example.org/dl/{n}-{ver}.zip"}, {cmd: "unzip {n}-{ver}.zip", target: true}]}
+    xz: {setup: ["fx_archive {n}-{ver}.tar.xz {lang}"], steps: [{cmd: "wget https://example.org/dl/{n}-{ver}.tar.xz"}, {cmd: "tar xf {n}-{ver}.tar.xz", target: true}]}
+    out: {steps: [{cmd: "wget -O src.tar.gz https://example.org/dl/{n}-{ver}.tar.gz"}, {cmd: "tar xzf src.tar.gz", target: true}]}
+- id: created_use.cargo_new
+  class: created_use
+  vars: {d: {gen: project}}
+  steps: [{cmd: "cargo new {d}"}, {cmd: "cd {d}", target: true}, {cmd: "cargo run", target: true}]
+- id: created_use.npm_init
+  class: created_use
+  vars: {d: {gen: project}, p: {gen: npm}}
+  steps: [{cmd: "mkdir {d}"}, {cmd: "cd {d}"}, {cmd: "npm init -y", target: true}, {cmd: "npm install {p}", target: true}]
+- id: created_use.venv_activate
+  class: created_use
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python", "cd {d}"]
+  steps: [{cmd: "python3 -m venv .venv"}, {cmd: "source .venv/bin/activate", target: true}]
+  variants:
+    venv: {steps: [{cmd: "python3 -m venv venv"}, {cmd: "source venv/bin/activate", target: true}]}
+    env: {steps: [{cmd: "python -m venv env"}, {cmd: ". env/bin/activate", target: true}]}
+    py: {steps: [{cmd: "python -m venv .venv"}, {cmd: "source .venv/bin/activate", target: true}, {cmd: "pip install -r requirements.txt", target: true}]}
+- id: created_use.tar_create
+  class: created_use
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} python", "mkdir -p ~/Documents"]
+  steps: [{cmd: "tar czf {d}.tar.gz {d}"}, {cmd: "mv {d}.tar.gz ~/Documents/", target: true}]
+  variants:
+    zip: {steps: [{cmd: "zip -r {d}.zip {d}"}, {cmd: "mv {d}.zip ~/Documents/", target: true}]}
+    rm: {steps: [{cmd: "tar czf {d}.tar.gz {d}"}, {cmd: "rm -r {d}", target: true}]}
+- id: created_use.branch_checkout
+  class: created_use
+  vars: {u: {gen: user}, rp: {gen: project}, br: {gen: branch}}
+  setup: ["fx_remote {u}/{rp} node", "git clone -q https://github.com/{u}/{rp}", "cd {rp}"]
+  steps: [{cmd: "git branch {br}"}, {cmd: "git checkout {br}", target: true}]
+  variants:
+    switch: {steps: [{cmd: "git branch {br}"}, {cmd: "git switch {br}", target: true}]}
+    newpush: {steps: [{cmd: "git checkout -b {br}"}, {cmd: "git push -u origin {br}", target: true}]}
+    switchc: {steps: [{cmd: "git switch -c {br}"}, {cmd: "git push -u origin {br}", target: true}]}
+- id: created_use.cmake_build_dir
+  class: created_use
+  vars: {d: {gen: project}}
+  setup: ["fx_project {d} cmake", "cd {d}"]
+  steps: [{cmd: "mkdir build"}, {cmd: "cd build", target: true}, {cmd: "cmake ..", target: true}]
+  variants:
+    B: {steps: [{cmd: "cmake -B build"}, {cmd: "cmake --build build", target: true}]}

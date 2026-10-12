@@ -18,7 +18,7 @@ import sessions as S
 ROOT = pathlib.Path(__file__).resolve().parent
 SANDBOX = str(ROOT / "sandbox.sh")
 HOME = "/home/dev"
-OPAQUE_FIRST = {"apt", "apt-get", "systemctl", "service", "docker", "kubectl", "ssh", "kill", "top", "ps", "df", "du", "free", "uptime", "uname",
+OPAQUE_FIRST = {"docker-compose", "journalctl", "scp", "apt", "apt-get", "systemctl", "service", "docker", "kubectl", "ssh", "kill", "top", "ps", "df", "du", "free", "uptime", "uname",
                 "date", "hostname", "id", "history", "env", "printenv", "sleep"}
 COMPARE_OUT = {"git status", "git status -s", "git status -sb", "git branch", "git status --short"}
 SNAP_FN = r"""
@@ -33,8 +33,12 @@ SNAP() {
 
 
 def docker_cmd(step):
-    """Command the sandbox really runs for a simulated step (opaque tools are skipped, sudo is stripped)."""
+    """Command the sandbox really runs for a simulated step (opaque tools are skipped, sudo is stripped, pnpm/yarn -> npm)."""
     c = step["cmd"]
+    w = c.split()
+    if w and w[0] in ("pnpm", "yarn"):
+        from sim.shell import npm_equiv
+        return " ".join(["npm"] + npm_equiv(w[1:]))
     if step.get("v", True):
         return c
     m = re.match(r"sudo\s+(.*)$", c)
