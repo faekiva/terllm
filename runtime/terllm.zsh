@@ -84,8 +84,11 @@ _terllm_accept() {
 }
 _terllm_accept_right() { _terllm_accept forward-char }
 _terllm_accept_end() { _terllm_accept end-of-line }
+_terllm_accept_or_run() { _terllm_accept accept-line }   # no suggestion: behave like Enter
 
-zle -N _terllm_apply; zle -N _terllm_accept_right; zle -N _terllm_accept_end
+zle -N _terllm_apply; zle -N _terllm_accept_right; zle -N _terllm_accept_end; zle -N _terllm_accept_or_run
+: ${TERLLM_ACCEPT_KEY:=^J}   # iTerm2 (Claude Code setup) sends ^J for Shift+Enter; '' = don't bind
+[[ -n $TERLLM_ACCEPT_KEY ]] && bindkey "$TERLLM_ACCEPT_KEY" _terllm_accept_or_run
 bindkey '^[[C' _terllm_accept_right '^[OC' _terllm_accept_right '^[[F' _terllm_accept_end '^[OF' _terllm_accept_end
 add-zle-hook-widget line-pre-redraw _terllm_redraw
 add-zle-hook-widget line-init _terllm_init

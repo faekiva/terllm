@@ -15,7 +15,9 @@ paiksca's plugin with this fork's fixes, the source of `assist/backend.py`.
 | Ctrl-O: complete this line with the big model; `git commit -m "` gets the staged diff | same | ~1 s warm |
 
 The 7b unloads after `AIZSH_OLLAMA_KEEPALIVE` (2m), so the first fix/Ctrl-O after idle
-waits for a model load. Accept any ghost text with Right arrow / End.
+waits for a model load. Accept any ghost text with Right arrow / End, or Shift+Enter
+(`TERLLM_ACCEPT_KEY`, default `^J`: iTerm2's Claude Code setup sends `\n` for Shift+Enter).
+With nothing to accept, Shift+Enter runs the line like Enter.
 
 ## Changes from upstream terllm
 
@@ -30,7 +32,7 @@ waits for a model load. Accept any ghost text with Right arrow / End.
   cut from the prompt and the output forced to restart with it (llama-server grammar).
   `TERLLM_HEAL=0` turns it off.
 - `runtime/terllm.zsh`: sends the `(z)` split; `_terllm_pin` lets `assist/` keep its
-  suggestion until the user diverges.
+  suggestion until the user diverges; Shift+Enter (`^J`) accepts.
 
 ## Changes from paiksca
 
