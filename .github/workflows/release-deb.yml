@@ -1,0 +1,29 @@
+# Build the .deb on every v* tag and attach it to the GitHub release; "Run workflow" builds it as an artifact without releasing.
+name: release-deb
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  deb:
+    runs-on: ubuntu-24.04            # oldest supported glibc: the package then runs on newer Ubuntu/Debian too
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake g++ make fakeroot zsh curl ca-certificates git
+      - run: packaging/test_maint.sh
+      - name: Build
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then VER=${GITHUB_REF_NAME#v}; else VER=0.0.0+${GITHUB_SHA::7}; fi
+          packaging/build-deb.sh "$VER"
+          dpkg-deb --info dist/*.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terllm-deb
+          path: dist/*.deb
+      - name: Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.deb --title "terllm $GITHUB_REF_NAME" --generate-notes

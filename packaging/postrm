@@ -1,0 +1,16 @@
+#!/bin/sh
+# Remove the block postinst added to users' ~/.bashrc and ~/.zshrc (on remove and purge, not on upgrade).
+set -e
+if [ "$1" = remove ] || [ "$1" = purge ]; then
+    getent passwd | while IFS=: read -r name _ uid _ _ home _; do
+        [ "$uid" -ge 1000 ] && [ "$uid" -lt 60000 ] || continue
+        for f in "$home/.bashrc" "$home/.zshrc"; do
+            [ -f "$f" ] && [ ! -L "$f" ] && grep -qF '# >>> terllm (managed by the terllm package' "$f" || continue
+            t=$(mktemp)
+            sed '/^# >>> terllm (managed by the terllm package/,/^# <<< terllm <<<$/d' "$f" > "$t"
+            cat "$t" > "$f"                                        # rewrite in place: sed -i would hand the file to root
+            rm -f "$t"
+        done
+    done
+fi
+exit 0
