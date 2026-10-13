@@ -389,8 +389,32 @@ def _git(pwd):
     if not branch:
         return ""
     status = _run(["git", "-C", pwd, "status", "--porcelain"])
-    n = len([x for x in status.splitlines() if x.strip()]) if status else 0
-    return f"{branch} ({n} uncommitted)" if n else branch
+    # split, not x[3:]: _run strips the first line's leading status space
+    changed = [x.split(None, 1)[-1] for x in status.splitlines() if x.strip()]
+    if not changed:
+        return branch
+    names = ", ".join(changed[:8]) + (", …" if len(changed) > 8 else "")
+    return f"{branch} ({len(changed)} uncommitted: {names})"
+
+
+DIFF_MAX = int(os.environ.get("AIZSH_DIFF_MAX", "1500"))   # chars of diff sent; 0 = off
+
+
+def _git_diff(pwd):
+    """Staged diff (else unstaged) for commit-message completion; '' if none/off."""
+    if DIFF_MAX <= 0 or not shutil.which("git"):
+        return ""
+    for args in (["--cached"], []):
+        stat = _run(["git", "-C", pwd, "diff", *args, "--stat"])
+        if stat:
+            body = _run(["git", "-C", pwd, "diff", *args, "--no-color", "-U1"])
+            label = "staged" if args else "unstaged"
+            return (f"{label} changes:\n{stat}\n{body}")[:DIFF_MAX]
+    return ""
+
+
+def _wants_diff(buffer):
+    return re.match(r"^\s*git\s+commit\b", buffer or "") is not None
 
 
 def _zoxide():
@@ -1086,7 +1110,7 @@ def _ollama_fim(model, prefix, suffix):
         return "", str(e)
 
 
-def _fim_preamble(pwd, ctx, history):
+def _fim_preamble(pwd, ctx, history, diff=""):
     """Compact context as shell comments, prepended to the FIM prefix."""
     bits = [f"dir: {_abbrev(pwd)}"]
     if ctx.get("git"):
@@ -1103,6 +1127,8 @@ def _fim_preamble(pwd, ctx, history):
         recent = [h for h in history.splitlines() if h.strip()][-5:]
         if recent:
             lines.append("# recent: " + " ; ".join(recent))
+    if diff:
+        lines += ["# " + d for d in diff.splitlines()]
     return "\n".join(lines)
 
 
@@ -1140,11 +1166,14 @@ def do_ghost(buffer, pwd, history):
     if PROVIDER == "ollama" and FIM_ENABLED:
         # qwen2.5-coder does clean token-level continuation via fill-in-middle;
         # inject context as a comment preamble so it stays folder-aware.
-        prefix = _fim_preamble(pwd, ctx, history) + "\n" + buffer
+        diff = _git_diff(pwd) if _wants_diff(buffer) else ""
+        prefix = _fim_preamble(pwd, ctx, history, diff) + "\n" + buffer
         text, _ = _ollama_fim(GHOST_MODEL, prefix, "")
         suffix = clean_fim(text, buffer)
     else:
+        diff = _git_diff(pwd) if _wants_diff(buffer) else ""
         user = (_ctx_block(pwd, ctx, history) +
+                ("\n\nGit " + diff if diff else "") +
                 "\n\nComplete this command line (output only the continuation):\n" + buffer)
         text, _ = generate(GHOST_MODEL, GHOST_SYSTEM, user,
                            max_tokens=48, temp=0.15, stop=["\n"])
@@ -1385,6 +1414,10 @@ class Handler(socketserver.StreamRequestHandler):
                 if closed:                                  # client gone → cancel
                     conn = getattr(t, "_aizsh_conn", None)
                     if conn:
+                        # shutdown first: close() alone leaves the fd alive (the
+                        # response reader holds a ref), so Ollama never sees EOF
+                        try: conn.sock and conn.sock.shutdown(socket.SHUT_RDWR)
+                        except Exception: pass
                         try: conn.close()
                         except Exception: pass
                     return
