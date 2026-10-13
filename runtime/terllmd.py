@@ -23,6 +23,7 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "datagen"))
 import hist_baseline  # noqa: E402
+import lineparse  # noqa: E402
 import policy  # noqa: E402
 import quality  # noqa: E402
 import render  # noqa: E402  (the training prompt format is the single source of truth)
@@ -32,6 +33,7 @@ SOCK = pathlib.Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "terllm.sock"
 HOME = os.path.expanduser("~")
 LLAMA_SERVER = ROOT / "vendor/llama.cpp/build/bin/llama-server"
 FS = False
+HEAL = os.environ.get("TERLLM_HEAL", "1") != "0"   # token healing of the half-typed word
 SHADOW = pathlib.Path(os.environ.get("XDG_DATA_HOME", HOME + "/.local/share")) / "terllm/shadow.jsonl"   # local only, never uploaded
 
 
@@ -95,10 +97,15 @@ class Backend:
                 time.sleep(0.1)
         raise SystemExit("llama-server did not start")
 
-    def complete(self, prompt):
-        body = json.dumps({"prompt": prompt, "n_predict": 48, "temperature": 0, "cache_prompt": True, "n_probs": 1}).encode()
+    def complete(self, prompt, heal=""):
+        """heal: the half-typed word at the end of `prompt`; it is cut off and the output forced to restart with it."""
+        req = {"prompt": prompt, "n_predict": 48, "temperature": 0, "cache_prompt": True, "n_probs": 1}
+        if heal:
+            lit = heal.replace("\\", "\\\\").replace('"', '\\"')
+            req.update(prompt=prompt[:-len(heal)], n_probs=20, grammar=f'root ::= "{lit}" [^\\n]*')
+        body = json.dumps(req).encode()
         r = json.load(urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{self.port}/completion", body, {"Content-Type": "application/json"}), timeout=5))
-        return policy.parse(r)
+        return policy.parse_healed(r, heal) if heal else policy.parse(r)
 
 
 class Session:
@@ -128,11 +135,12 @@ class Session:
         self.steps.append({"cwd": render_cwd(cwd), "ls": listing(cwd), "git": git_state(cwd), "env": {"VIRTUAL_ENV": os.path.basename(venv)} if venv else {},
                            "cmd": "", "exit": 0, "stderr": "", "stdout": "", "target": True, "nl": None})
 
-    def prompt(self, buf):
+    def prompt(self, buf, words=None):
         self.steps[-1]["cmd"] = buf
         cands = render.history_cands(HISTORY, buf)
-        fs = render.fs_cands(buf, self.steps[-1]["cwd"], listdir, sorted(set(BINS) | set(path_bins([self.venv + "/bin"] if self.venv else [])))) if FS else []
-        return render.prompt(render.context({"steps": self.steps}, len(self.steps) - 1, io=False), buf, cands, fs), cands, fs
+        line = lineparse.parse(buf, words)   # candidates for the current command, not the line's first
+        fs = lineparse.candidates(line, render.fs_cands(line.segment, self.steps[-1]["cwd"], listdir, sorted(set(BINS) | set(path_bins([self.venv + "/bin"] if self.venv else []))))) if FS else []
+        return render.prompt(render.context({"steps": self.steps}, len(self.steps) - 1, io=False), buf, cands, fs), cands, fs, line
 
 
 def render_cwd(cwd):
@@ -159,14 +167,15 @@ def serve(backend, idle=0.0):
                     q, latest[0] = latest[0], None
                     if q is None:
                         continue
-                    seq, buf = q
+                    seq, buf, words = q
                     comp = ""
                     try:
-                        prompt, cands, fs = ses.prompt(buf)
-                        toks = backend.complete(prompt)
-                        comp = policy.confident_prefix(toks, backend.threshold)
+                        prompt, cands, fs, line = ses.prompt(buf, words)
+                        heal = line.cur if HEAL and prompt.endswith(line.cur) else ""
+                        toks = backend.complete(prompt, heal)
+                        comp, rule = lineparse.decide(toks, backend.threshold, line, fs)
                         comp = "" if "\n" in comp else comp
-                        ses.events.append({"typed": buf, "toks": [[t, round(p, 3)] for t, p in toks], "shown": comp, "cands": cands, "fs": fs})
+                        ses.events.append({"typed": buf, "toks": [[t, round(p, 3)] for t, p in toks], "shown": comp, "rule": rule, "cands": cands, "fs": fs})
                     except Exception as e:                     # never break the shell
                         print("query failed:", e, file=sys.stderr)
                     try:
@@ -182,7 +191,8 @@ def serve(backend, idle=0.0):
                 elif f[0] == "a":
                     ses.accepted = True
                 elif f[0] == "q" and len(f) >= 3:
-                    latest[0] = (f[1], "\t".join(f[2:])); ev.set()
+                    buf, sep, zwords = "\t".join(f[2:]).partition("\x1f")   # plugin appends zsh's ${(z)} split
+                    latest[0] = (f[1], buf, zwords.split("\x1e") if sep else None); ev.set()
 
     SOCK.unlink(missing_ok=True)
     with socketserver.ThreadingUnixStreamServer(str(SOCK), H) as srv:

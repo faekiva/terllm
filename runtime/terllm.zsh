@@ -65,7 +65,7 @@ _terllm_redraw() {                              # line-pre-redraw: runs on every
   [[ -n $_terllm_fd && $CURSOR -eq ${#BUFFER} && $BUFFER != $_terllm_qbuf ]] || return
   _terllm_qbuf=$BUFFER
   (( _terllm_seq++ ))
-  _terllm_send "q"$'\t'"$_terllm_seq"$'\t'"$BUFFER"
+  _terllm_send "q"$'\t'"$_terllm_seq"$'\t'"$BUFFER"$'\x1f'"${(pj:\x1e:)${(z)BUFFER}}"   # + zsh's own word split
 }
 
 _terllm_init() { _terllm_qbuf=$'\x01'; _terllm_last=""; _terllm_sugg="" }   # new prompt: ask again, also for the empty line
