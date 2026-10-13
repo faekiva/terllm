@@ -43,6 +43,9 @@ With nothing to accept, Shift+Enter runs the line like Enter.
 
 ## Run it (macOS)
 
+With nix: set `TERLLM_LLAMA_SERVER` (a llama-server binary) and `TERLLM_MODEL` (the gguf) and
+skip the `vendor/` / `models/` setup below — nixfiles does this. Without nix:
+
 ```sh
 # llama-server: the daemon expects vendor/llama.cpp/build/bin/llama-server. Use a wrapper,
 # not a symlink — llama.cpp loads its backends from next to the path it was started as.

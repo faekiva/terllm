@@ -32,7 +32,7 @@ import render  # noqa: E402  (the training prompt format is the single source of
 HISTORY = hist_baseline.load(os.environ.get("HISTFILE", "~/.zsh_history")) if os.path.exists(os.path.expanduser(os.environ.get("HISTFILE", "~/.zsh_history"))) else []   # shared by all shells, oldest -> newest
 SOCK = pathlib.Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "terllm.sock"
 HOME = os.path.expanduser("~")
-LLAMA_SERVER = ROOT / "vendor/llama.cpp/build/bin/llama-server"
+LLAMA_SERVER = pathlib.Path(os.environ.get("TERLLM_LLAMA_SERVER") or ROOT / "vendor/llama.cpp/build/bin/llama-server")
 FS = False
 HEAL = os.environ.get("TERLLM_HEAL", "1") != "0"   # token healing of the half-typed word
 SHADOW = pathlib.Path(os.environ.get("XDG_DATA_HOME", HOME + "/.local/share")) / "terllm/shadow.jsonl"   # local only, never uploaded
@@ -226,7 +226,7 @@ def serve(backend, idle=0.0):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=str(ROOT / "models/gguf/terllm-v3-q4_k_m.gguf"))
+    ap.add_argument("--model", default=os.environ.get("TERLLM_MODEL") or str(ROOT / "models/gguf/terllm-v3-q4_k_m.gguf"))
     ap.add_argument("--threads", type=int, default=4)
     ap.add_argument("--threshold", type=float, default=0.8, help="show the longest prefix of the completion whose tokens all have at least this probability")
     ap.add_argument("--idle", type=float, default=15, help="exit after this many minutes without a connected shell (0 = never)")
