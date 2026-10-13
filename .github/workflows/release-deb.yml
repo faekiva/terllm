@@ -1,7 +1,8 @@
-# Build the .deb on every v* tag and attach it to the GitHub release; "Run workflow" builds it as an artifact without releasing.
+# Build the .deb on every push to main (artifact only) and on every v* tag (artifact + GitHub release); "Run workflow" is the same as a push.
 name: release-deb
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 permissions:
@@ -12,6 +13,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake g++ make fakeroot zsh curl ca-certificates git
+      - uses: actions/cache@v4                 # the portable llama-server build (about 6 min from scratch)
+        with:
+          path: packaging/_build
+          key: llama-${{ hashFiles('packaging/llama.cpp.rev', 'packaging/build-deb.sh') }}
       - run: packaging/test_maint.sh
       - name: Build
         run: |
@@ -22,6 +27,7 @@ jobs:
         with:
           name: terllm-deb
           path: dist/*.deb
+          retention-days: ${{ github.ref_type == 'tag' && 90 || 7 }}
       - name: Release
         if: github.ref_type == 'tag'
         env:
