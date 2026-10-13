@@ -6,6 +6,7 @@ autoload -Uz add-zle-hook-widget add-zsh-hook
 
 typeset -g _terllm_dir="${0:A:h}" _terllm_sock="${XDG_RUNTIME_DIR:-/tmp}/terllm.sock"
 typeset -g _terllm_fd _terllm_seq=0 _terllm_sugg="" _terllm_last="" _terllm_lastcmd="" _terllm_qbuf=""
+typeset -g _terllm_pin=""   # set by other plugins (assist/) to keep their suggestion until the user diverges
 
 _terllm_connect() {
   [[ -n $_terllm_fd ]] && return 0
@@ -36,7 +37,7 @@ _terllm_paint() {                               # the only place that touches PO
     tail=${want#"$BUFFER"}
     region_highlight+=("${#BUFFER} $(( ${#BUFFER} + ${#tail} )) fg=8,memo=terllm")
   else
-    _terllm_sugg=""
+    _terllm_sugg=""; _terllm_pin=""
   fi
   POSTDISPLAY=$tail
 }
@@ -53,6 +54,7 @@ _terllm_apply() {
   local -a f
   f=("${(@ps:\t:)1}")
   [[ $f[1] == s && $f[2] == $_terllm_seq && $f[3] == $BUFFER && -n $f[4] ]] || return   # stale answers are dropped
+  [[ -n $_terllm_pin && -n $_terllm_sugg ]] && return    # a pinned suggestion wins over the model
   _terllm_last=$BUFFER; _terllm_sugg=$f[4]
   _terllm_paint
   zle -R
@@ -68,8 +70,8 @@ _terllm_redraw() {                              # line-pre-redraw: runs on every
   _terllm_send "q"$'\t'"$_terllm_seq"$'\t'"$BUFFER"$'\x1f'"${(pj:\x1e:)${(z)BUFFER}}"   # + zsh's own word split
 }
 
-_terllm_init() { _terllm_qbuf=$'\x01'; _terllm_last=""; _terllm_sugg="" }   # new prompt: ask again, also for the empty line
-_terllm_finish() { _terllm_last=""; _terllm_sugg=""; _terllm_paint }       # accepted line: leave no ghost text in the scrollback
+_terllm_init() { _terllm_qbuf=$'\x01'; _terllm_last=""; _terllm_sugg=""; _terllm_pin="" }   # new prompt: ask again, also for the empty line
+_terllm_finish() { _terllm_last=""; _terllm_sugg=""; _terllm_pin=""; _terllm_paint }       # accepted line: leave no ghost text in the scrollback
 
 _terllm_accept() {
   local want=$_terllm_last$_terllm_sugg            # the suggestion is relative to what was typed when it arrived: typing along (cl -> cle) must not append it twice
