@@ -10,7 +10,7 @@ typeset -g _terllm_fd _terllm_seq=0 _terllm_sugg="" _terllm_last="" _terllm_last
 _terllm_connect() {
   [[ -n $_terllm_fd ]] && return 0
   if [[ ! -S $_terllm_sock ]]; then
-    (cd $_terllm_dir/.. && nohup uv run runtime/terllmd.py >/tmp/terllmd.log 2>&1 &)
+    (cd $_terllm_dir/.. && nohup python3 runtime/terllmd.py >/tmp/terllmd.log 2>&1 &)
     return 1                                   # daemon is warming up; try again on the next prompt
   fi
   zsocket $_terllm_sock 2>/dev/null || return 1

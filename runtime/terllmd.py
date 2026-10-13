@@ -5,7 +5,7 @@ Protocol: one tab-separated line per message.
                     q <seq> <buf>                     (the user typed `buf`)
   daemon -> shell   s <seq> <buf> <completion>        (empty completion = abstain)
 
-uv run runtime/terllmd.py [--model models/gguf/terllm-v3-q4_k_m.gguf] [--threshold 0.8] [--no-fs]   (--no-fs: no file/dir/command candidates in the prompt; required for v1/v2 models)
+uv run runtime/terllmd.py [--model models/gguf/terllm-v3-q4_k_m.gguf] [--threshold 0.8] [--idle 15] [--no-fs]   (--no-fs: no file/dir/command candidates in the prompt; required for v1/v2 models)
 """
 import argparse
 import itertools
@@ -139,8 +139,16 @@ def render_cwd(cwd):
     return "~" + cwd[len(HOME):] if cwd == HOME or cwd.startswith(HOME + "/") else cwd
 
 
-def serve(backend):
+def serve(backend, idle=0.0):
+    live = [0, time.time()]                                  # connected shells, when the last one left
+
     class H(socketserver.StreamRequestHandler):
+        def setup(self):
+            super().setup(); live[0] += 1
+
+        def finish(self):
+            super().finish(); live[0] -= 1; live[1] = time.time()
+
         def handle(self):
             ses, latest, ev = Session(), [None], threading.Event()
             ses.update(0, HOME, "", "")
@@ -180,6 +188,13 @@ def serve(backend):
     with socketserver.ThreadingUnixStreamServer(str(SOCK), H) as srv:
         SOCK.chmod(0o600)
         srv.daemon_threads = True
+        if idle:                                             # nobody connected for `idle` minutes: exit (the next terminal starts us again)
+            def watch():
+                while True:
+                    time.sleep(min(30, idle * 20))
+                    if live[0] == 0 and time.time() - live[1] > idle * 60:
+                        srv.shutdown(); return
+            threading.Thread(target=watch, daemon=True).start()
         srv.serve_forever()
 
 
@@ -188,11 +203,12 @@ if __name__ == "__main__":
     ap.add_argument("--model", default=str(ROOT / "models/gguf/terllm-v3-q4_k_m.gguf"))
     ap.add_argument("--threads", type=int, default=4)
     ap.add_argument("--threshold", type=float, default=0.8, help="show the longest prefix of the completion whose tokens all have at least this probability")
+    ap.add_argument("--idle", type=float, default=15, help="exit after this many minutes without a connected shell (0 = never)")
     ap.add_argument("--no-fs", action="store_true", help="leave file/dir/command candidates out of the prompt (v1/v2 models were not trained with <|fs|>)")
     a = ap.parse_args()
     FS = not a.no_fs
     b = Backend(a.model, a.threads, a.threshold)
     try:
-        serve(b)
+        serve(b, a.idle)
     finally:
         b.proc.terminate()
