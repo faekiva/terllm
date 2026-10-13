@@ -24,6 +24,7 @@ class Line(NamedTuple):
     cur: str         # word under the cursor; '' right after a space
     simple: bool     # the line is a single command (no &&, |, ;, subshell, …)
     created: list    # directories made earlier on the line, as candidates ('beep/')
+    words: list      # the current command's finished words ('npm', 'run')
 
 
 def parse(buf, words=None):
@@ -38,7 +39,7 @@ def parse(buf, words=None):
     segment = " ".join(seg + [cur]) if seg else cur
     return Line(segment=segment, cmd=head[0] if head else "", cur=cur,
                 simple=not any(w in SEPARATORS for w in words),
-                created=_created_dirs(done[:cut + 1]))
+                created=_created_dirs(done[:cut + 1]), words=head)
 
 
 def candidates(line, fs):
@@ -48,17 +49,25 @@ def candidates(line, fs):
     return (list(fs) + extra)[:8]
 
 
-def decide(toks, thr, line, cands):
+def decide(toks, thr, line, cands, strict=False):
     """What to show: the confident prefix, widened by rule 1 and vetoed by rule 2.
+
+    strict: `cands` is the complete list of valid words here (task-runner targets), so
+    rule 2 applies even in chains and for any command.
 
     Returns (suggestion, rule) where rule is '', 'backed' or 'vetoed' (for the log).
     """
     shown = policy.confident_prefix(toks, thr)
     rule = ""
+    if strict and len(cands) == 1:   # the only valid word: complete it like fish would
+        return cands[0][len(line.cur):], "unique"
     backed = _backed_word(toks, line.cur, cands)
     if backed and not shown.startswith(backed):
         shown, rule = backed, "backed"
-    if shown and line.simple and line.cmd in MUST_EXIST and cands \
+    must_exist = strict or (line.simple and line.cmd in MUST_EXIST)
+    if shown and strict and not cands:   # no valid word starts with what's typed
+        return "", "vetoed"
+    if shown and must_exist and cands \
             and not _fits_candidates(line.cur + _first_word(shown), line.cur, cands):
         shown, rule = "", "vetoed"
     return shown, rule

@@ -24,6 +24,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "datagen"))
 import hist_baseline  # noqa: E402
 import lineparse  # noqa: E402
+import targets  # noqa: E402
 import policy  # noqa: E402
 import quality  # noqa: E402
 import render  # noqa: E402  (the training prompt format is the single source of truth)
@@ -139,8 +140,23 @@ class Session:
         self.steps[-1]["cmd"] = buf
         cands = render.history_cands(HISTORY, buf)
         line = lineparse.parse(buf, words)   # candidates for the current command, not the line's first
-        fs = lineparse.candidates(line, render.fs_cands(line.segment, self.steps[-1]["cwd"], listdir, sorted(set(BINS) | set(path_bins([self.venv + "/bin"] if self.venv else []))))) if FS else []
-        return render.prompt(render.context({"steps": self.steps}, len(self.steps) - 1, io=False), buf, cands, fs), cands, fs, line
+        tg, strict = target_cands(line, self.cwd)
+        fs = tg if strict else lineparse.candidates(line, render.fs_cands(line.segment, self.steps[-1]["cwd"], listdir, sorted(set(BINS) | set(path_bins([self.venv + "/bin"] if self.venv else []))))) if FS else []
+        return render.prompt(render.context({"steps": self.steps}, len(self.steps) - 1, io=False), buf, cands, fs[:render.FS_SHOW]), cands, fs, line, strict
+
+
+_TARGETS = {}   # (runner, cwd) -> (time, names): `task --list-all` is too slow per keystroke
+
+
+def target_cands(line, cwd, ttl=5.0):
+    """(matching targets, strict): strict when the runner has a target list at all."""
+    runner = targets.runner_for(line.words)
+    if not runner or line.cur.startswith("-"):
+        return [], False
+    hit = _TARGETS.get((runner, cwd))
+    if not hit or time.time() - hit[0] > ttl:
+        hit = _TARGETS[(runner, cwd)] = (time.time(), targets.targets(runner, cwd))
+    return [t for t in hit[1] if t.startswith(line.cur) and t != line.cur], bool(hit[1])
 
 
 def render_cwd(cwd):
@@ -170,10 +186,10 @@ def serve(backend, idle=0.0):
                     seq, buf, words = q
                     comp = ""
                     try:
-                        prompt, cands, fs, line = ses.prompt(buf, words)
+                        prompt, cands, fs, line, strict = ses.prompt(buf, words)
                         heal = line.cur if HEAL and prompt.endswith(line.cur) else ""
                         toks = backend.complete(prompt, heal)
-                        comp, rule = lineparse.decide(toks, backend.threshold, line, fs)
+                        comp, rule = lineparse.decide(toks, backend.threshold, line, fs, strict)
                         comp = "" if "\n" in comp else comp
                         ses.events.append({"typed": buf, "toks": [[t, round(p, 3)] for t, p in toks], "shown": comp, "rule": rule, "cands": cands, "fs": fs})
                     except Exception as e:                     # never break the shell
